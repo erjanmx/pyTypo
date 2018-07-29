@@ -3,12 +3,14 @@ attrs==18.1.0
 backports.csv==1.0.6
 backports.functools-lru-cache==1.5
 beautifulsoup4==4.6.0
+certifi==2018.4.16
 chardet==3.0.4
 cheroot==6.3.3
 CherryPy==17.0.0
 docx==0.2.4
 feedparser==5.2.1
 future==0.16.0
+idna==2.7
 jaraco.functools==1.20
 lxml==4.2.3
 more-itertools==4.2.0
@@ -27,7 +29,9 @@ pycryptodome==3.6.4
 pytest==3.6.3
 python-docx==0.8.6
 pytz==2018.5
+requests==2.19.1
 scipy==1.1.0
 simplejson==3.16.0
 six==1.11.0
 tempora==1.13
+urllib3==1.23
