@@ -11,6 +11,7 @@ docx==0.2.4
 feedparser==5.2.1
 future==0.16.0
 idna==2.7
+inflection==0.3.1
 jaraco.functools==1.20
 lxml==4.2.3
 more-itertools==4.2.0
