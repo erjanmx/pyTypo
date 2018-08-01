@@ -1,6 +1,4 @@
 from github import GitHub
-from inflection import singularize
-from pattern.text.en import suggest
 
 GITHUB_TOKEN = ''
 
@@ -56,21 +54,17 @@ contributing is highly appreciated
     # popular = gh.get_popular_repos_for_date('2018-07-26')
     # print(gh.get_readme_content('iiiCeBlink/ZSNavigationBar'))
     import re
+    from autocorrect import spell
 
+    readme = gh.get_readme_content('klauscfhq/taskbook')
     a = set(filter(lambda w: re.search('^[a-zA-Z]{4,}$', w) is not None, readme.split()))
 
     for x in a:
-        sing = singularize(x)
-        # print(sing)
-        suggested, confidence = suggest(sing)[0]
-        if suggested == sing:
+        suggested = spell(x)
+        if suggested == x:
             continue
 
-        if abs(len(suggested) - len(sing)) > 1:
-            continue
-
-        if 0.8 < confidence < 1.0:
-            print(x, suggested, confidence, sep=': ')
+        print(x, suggested, sep=': ')
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ class GitHub(object):
             'Accept': 'application/vnd.github.V3.raw'
         })
 
-        return response.content
+        return str(response.content)
 
     def get_popular_repos_for_date(self, date):
         response = self._request(url='search/repositories', params={
