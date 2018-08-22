@@ -1,71 +1,138 @@
+import re
+import logging
+
 from github import GitHub
+from autocorrect import spell
+from tinydb import TinyDB, Query
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Filters
 
 GITHUB_TOKEN = ''
+TELEGRAM_TOKEN = ''
+TELEGRAM_USER_ID = 0
+
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger(__name__)
+
+gh = GitHub(GITHUB_TOKEN)
+db = TinyDB('db.json')
+
+keyboard = [
+    [
+        InlineKeyboardButton("Skip", callback_data='skip'),
+        InlineKeyboardButton("Skip repo", callback_data='skip-repo'),
+        InlineKeyboardButton("Ignore", callback_data='ignore'),
+    ],
+    [
+        InlineKeyboardButton("Approve", callback_data='approve')
+    ]
+]
+reply_markup = InlineKeyboardMarkup(keyboard)
+
+last = dict()
+repo_gen = None
+skip_repo = False
+
+
+def get_a_repo(date):
+    global skip_repo
+    query = Query()
+
+    populars = ['louisdh/source-editor', 'threepointone/css-suspense', 'Think-Silicon/GLOVE', 'LLZUPUP/vue-fallowFish', 'hihayk/scale', 'lizixian18/EasyMvp', 'PortSwigger/param-miner', 'zaptst/zap', 'obiwankenoobi/react-express-boilerplate', 'aichinateam/chinese-ai-developer', 'vinyldns/vinyldns', '22bulbs/brom', 'sootlasten/disentangled-representation-papers', 'rodeofx/OpenWalter', 'TheOfficialFloW/VitaTweaks', 'wjpdeveloper/my-action-github', 'AlexanderEllis/js-reading-list', 'skeeto/hash-prospector', 'sarah21cn/BlockChainTechnology', 'matrixgardener/AlgorithmCode', 'CompVis/adaptive-style-transfer', 'hamlim/inline-mdx.macro', 'prakashdanish/vim-githubinator', 'nacos-group/nacos-spring-project', 'mattatz/UNN', 'pldmgg/WinAdminCenterPS', 'wujunze/dingtalk-exception', 'cuixiaorui/cReptile', 'renjianan/initiator', 'codrops/MotionRevealSlideshow']
+    populars = ['zaptst/zap', 'obiwankenoobi/react-express-boilerplate', 'aichinateam/chinese-ai-developer', 'vinyldns/vinyldns', '22bulbs/brom', 'sootlasten/disentangled-representation-papers', 'rodeofx/OpenWalter', 'TheOfficialFloW/VitaTweaks', 'wjpdeveloper/my-action-github', 'AlexanderEllis/js-reading-list', 'skeeto/hash-prospector', 'sarah21cn/BlockChainTechnology', 'matrixgardener/AlgorithmCode', 'CompVis/adaptive-style-transfer', 'hamlim/inline-mdx.macro', 'prakashdanish/vim-githubinator', 'nacos-group/nacos-spring-project', 'mattatz/UNN', 'pldmgg/WinAdminCenterPS', 'wujunze/dingtalk-exception', 'cuixiaorui/cReptile', 'renjianan/initiator', 'codrops/MotionRevealSlideshow']
+    # gh.get_popular_repos_for_date(date)
+    for repo in populars:
+        readme = gh.get_readme_content(repo)
+        # get unique list of alphabetical words with length more then 4 symbols
+        words = set(filter(lambda w: re.search('^[a-zA-Z]{4,}$', w) is not None, readme.split()))
+        for word in words:
+            if skip_repo:
+                break
+
+            suggested = spell(word)
+            if suggested == word:
+                continue
+
+            # search in ignore list
+            if db.search(query.word == word):
+                continue
+
+            yield repo, readme, word, suggested
+        skip_repo = False
+
+
+def add_to_ignore_list(word):
+    db.insert({'word': word})
+
+
+def send_next(bot, message_id=None):
+    global last, repo_gen
+
+    repo, readme, typo, suggested = next(repo_gen)
+    last = {'repo': repo, 'readme': readme, 'typo': typo, 'suggested': suggested}
+
+    text = 'https://github.com/{}\n\n{} - {}'.format(repo, typo, suggested)
+
+    if message_id is None:
+        bot.send_message(chat_id=TELEGRAM_USER_ID, text=text, reply_markup=reply_markup, disable_web_page_preview=True)
+    else:
+        bot.edit_message_text(chat_id=TELEGRAM_USER_ID, message_id=message_id, text=text, reply_markup=reply_markup,
+                              disable_web_page_preview=True)
+
+
+def start(bot, update):
+    global repo_gen
+    repo_gen = get_a_repo('2018-07-26')
+    send_next(bot)
+
+
+def error(bot, update, error):
+    logger.warning('Update "%s" caused error "%s"', update, error)
+
+
+def action(bot, update):
+    global skip_repo
+    query = update.callback_query
+
+    q_data = query.data
+
+    if q_data == 'skip-repo':
+        # skip the current repo
+        skip_repo = True
+    elif q_data == 'ignore':
+        # add this word to ignore list
+        add_to_ignore_list(last['typo'])
+    elif q_data == 'approve':
+        print(gh.fork_repo(last['repo']).content)
+
+        readme = last['readme']
+        modified_readme = str(readme).replace(last['typo'], last['suggested'])
+        gh.update_file('erjanmx/zap', content=modified_readme)
+        # open pr
+        print('approving')
+
+    bot.answer_callback_query(callback_query_id=query.id)
+    send_next(bot, message_id=query.message.message_id)
 
 
 def main():
-    gh = GitHub(GITHUB_TOKEN)
+    updater = Updater(TELEGRAM_TOKEN)
+    dp = updater.dispatcher
 
-    readme = """
-    # nobot
+    dp.add_handler(CommandHandler("start", start, filters=Filters.user(user_id=TELEGRAM_USER_ID)))
 
-Mini app that emulates chat window with bot and BotAPI server of NambaOne.
-May come handy for testing your own made bots cause testing with real device and real server requires "white" IP address server to host your bot.
+    dp.add_handler(CallbackQueryHandler(action))
 
-# usage
+    dp.add_error_handler(error)
 
-- change your bot's api endpoint from `https://api.namba1.co` to `http://127.0.0.1:3000/api`
-- set `bot_host` in `settings.json` so the server could send events to your bot
-- start your bot
-- run nobot with following commands npm or yarn (latter is recommended)
-
-```
-yarn or npm install
-yarn build or npm run build
-
-yarn serve or npm run serve
-```
-
-Open http://127.0.0.1:3000 in your browser
-
-You'll see chat window. From there you can send events such as `user/follow`, `user/unfollow` and mainly `message/new` by sending message.
-
-- Every event is handled by the server and sent to your bot's endpoint
-- As your bot responds everything would be sent back to your browser
-- If your bot sends message by using `chats/:chat_id/write` all it's content will appear as bot's message in your chat window. If message type is `media/image`, image will be downloaded from actual namba1 servers and shown in your chat window as regular image
-
-All other information about request sent by your bot will be logged in default browser console log, this information includes:
-
-- method
-- uri
-- headers
-- get params
-- post params
-
-# screenshot
-here is the screenshot of using this app with [simple echo bot](https://github.com/erjanmx/django-namba-one-bot)
-
-![Imgur](https://i.imgur.com/Z9jUVIu.png)
-
-# contribute
-
-contributing is highly appreciated
-"""
-    # popular = gh.get_popular_repos_for_date('2018-07-26')
-    # print(gh.get_readme_content('iiiCeBlink/ZSNavigationBar'))
-    import re
-    from autocorrect import spell
-
-    readme = gh.get_readme_content('klauscfhq/taskbook')
-    a = set(filter(lambda w: re.search('^[a-zA-Z]{4,}$', w) is not None, readme.split()))
-
-    for x in a:
-        suggested = spell(x)
-        if suggested == x:
-            continue
-
-        print(x, suggested, sep=': ')
+    updater.start_polling()
+    updater.idle()
 
 
 if __name__ == '__main__':
+    # bot = Bot(TELEGRAM_TOKEN)
+    # text = 'https://github.com/{}\n\n{} - {}'.format('louisdh/source-editor', 'typo', 'suggested')
+    # bot.send_message(chat_id=TELEGRAM_USER_ID, text=text, disable_web_page_preview=True, reply_markup=reply_markup)
     main()
