@@ -12,7 +12,7 @@ class GitHub(object):
         self.token = token
         self.client = client
 
-    def _request(self, url, method='get', params=(), data=(), json=(), headers=()):
+    def _request(self, url, method='get', params=(), data=(), json=None, headers=()):
         url = self.base_url + url
         _headers = dict(headers)
         _headers['Authorization'] = 'token %s' % self.token
@@ -22,17 +22,17 @@ class GitHub(object):
 
         return self.client.request(url=url, method=method, headers=_headers, params=params, data=data, json=json)
 
-    def get_readme_content(self, full_name):
-        response = self._request(url='repos/%s/readme' % full_name, headers={
-            'Accept': 'application/vnd.github.V3.raw'
-        })
+    # def get_readme_content(self, full_name):
+    #     response = self._request(url='repos/%s/readme' % full_name, headers={
+    #         'Accept': 'application/vnd.github.V3.raw'
+    #     })
+    #
+    #     return str(response.content)
 
-        return str(response.content)
-
-    def get_readme_sha(self, full_name):
+    def get_readme(self, full_name):
         response = self._request(url='repos/%s/readme' % full_name)
 
-        return response.json()['sha']
+        return response.json()
 
     def get_popular_repos_for_date(self, date):
         response = self._request(url='search/repositories', params={
@@ -69,7 +69,7 @@ class GitHub(object):
             'path': path,
             'message': 'Fix typo',
             'branch': branch,
-            'sha': self.get_readme_sha(full_name),
+            'sha': self.get_readme(full_name)['sha'],
             'content': str(base64.b64encode(content))[2:-1],
         })
 

@@ -1,4 +1,5 @@
 import re
+import base64
 import logging
 
 from github import GitHub
@@ -41,12 +42,14 @@ def get_a_repo(date):
     query = Query()
 
     populars = ['louisdh/source-editor', 'threepointone/css-suspense', 'Think-Silicon/GLOVE', 'LLZUPUP/vue-fallowFish', 'hihayk/scale', 'lizixian18/EasyMvp', 'PortSwigger/param-miner', 'zaptst/zap', 'obiwankenoobi/react-express-boilerplate', 'aichinateam/chinese-ai-developer', 'vinyldns/vinyldns', '22bulbs/brom', 'sootlasten/disentangled-representation-papers', 'rodeofx/OpenWalter', 'TheOfficialFloW/VitaTweaks', 'wjpdeveloper/my-action-github', 'AlexanderEllis/js-reading-list', 'skeeto/hash-prospector', 'sarah21cn/BlockChainTechnology', 'matrixgardener/AlgorithmCode', 'CompVis/adaptive-style-transfer', 'hamlim/inline-mdx.macro', 'prakashdanish/vim-githubinator', 'nacos-group/nacos-spring-project', 'mattatz/UNN', 'pldmgg/WinAdminCenterPS', 'wujunze/dingtalk-exception', 'cuixiaorui/cReptile', 'renjianan/initiator', 'codrops/MotionRevealSlideshow']
-    populars = ['zaptst/zap', 'obiwankenoobi/react-express-boilerplate', 'aichinateam/chinese-ai-developer', 'vinyldns/vinyldns', '22bulbs/brom', 'sootlasten/disentangled-representation-papers', 'rodeofx/OpenWalter', 'TheOfficialFloW/VitaTweaks', 'wjpdeveloper/my-action-github', 'AlexanderEllis/js-reading-list', 'skeeto/hash-prospector', 'sarah21cn/BlockChainTechnology', 'matrixgardener/AlgorithmCode', 'CompVis/adaptive-style-transfer', 'hamlim/inline-mdx.macro', 'prakashdanish/vim-githubinator', 'nacos-group/nacos-spring-project', 'mattatz/UNN', 'pldmgg/WinAdminCenterPS', 'wujunze/dingtalk-exception', 'cuixiaorui/cReptile', 'renjianan/initiator', 'codrops/MotionRevealSlideshow']
+    populars = ['zaptst/zap']
     # gh.get_popular_repos_for_date(date)
     for repo in populars:
-        readme = gh.get_readme_content(repo)
+        readme = gh.get_readme(repo)
+        content = str(base64.b64decode(str(readme['content']).replace('\\n', '')))
+        print(content)
         # get unique list of alphabetical words with length more then 4 symbols
-        words = set(filter(lambda w: re.search('^[a-zA-Z]{4,}$', w) is not None, readme.split()))
+        words = set(filter(lambda w: re.search('^[a-zA-Z]{4,}$', w) is not None, content.split()))
         for word in words:
             if skip_repo:
                 break
@@ -105,10 +108,11 @@ def action(bot, update):
         # add this word to ignore list
         add_to_ignore_list(last['typo'])
     elif q_data == 'approve':
-        print(gh.fork_repo(last['repo']).content)
+        # print(gh.fork_repo(last['repo']).content)
 
-        readme = last['readme']
-        modified_readme = str(readme).replace(last['typo'], last['suggested'])
+        # readme = last['readme']['content']
+        content = str(base64.b64decode(str(last['readme']['content']).replace('\\n', '')))
+        modified_readme = content.replace(last['typo'], last['suggested'])
         gh.update_file('erjanmx/zap', content=modified_readme)
         # open pr
         print('approving')
@@ -132,6 +136,9 @@ def main():
 
 
 if __name__ == '__main__':
+
+    # print(gh.get_readme('zaptst/zap'))
+
     # bot = Bot(TELEGRAM_TOKEN)
     # text = 'https://github.com/{}\n\n{} - {}'.format('louisdh/source-editor', 'typo', 'suggested')
     # bot.send_message(chat_id=TELEGRAM_USER_ID, text=text, disable_web_page_preview=True, reply_markup=reply_markup)
