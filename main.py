@@ -9,7 +9,7 @@ from autocorrect import spell
 from dotenv import load_dotenv
 from tinydb import TinyDB, Query
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Filters
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Filters, RegexHandler
 
 load_dotenv()
 
@@ -141,6 +141,18 @@ def start(bot, update):
     send_next_word(bot)
 
 
+def stop(bot, update):
+    update.message.reply_text('ok')
+    os._exit(1)
+
+
+def for_date(bot, update, groups):
+    global repo_gen
+    date = groups[0]
+    repo_gen = get_a_repo(date)
+    send_next_word(bot)
+
+
 def error(bot, update, error):
     logger.warning('Update "%s" caused error "%s"', update, error)
 
@@ -150,6 +162,8 @@ def poll():
     dp = updater.dispatcher
 
     dp.add_handler(CommandHandler("start", start, filters=Filters.user(user_id=TELEGRAM_USER_ID)))
+    dp.add_handler(CommandHandler("stop", stop, filters=Filters.user(user_id=TELEGRAM_USER_ID)))
+    dp.add_handler(RegexHandler('([\d]{4}-[\d]{2}-[\d]{2})', for_date, pass_groups=True))
 
     dp.add_handler(CallbackQueryHandler(callback_action))
 
