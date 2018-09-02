@@ -59,6 +59,10 @@ def get_a_repo(date):
             if skip_repo:
                 break
 
+            # if more than 1 uppercase letter
+            if 1 < sum(1 for l in word if l.isupper()):
+                continue
+
             suggested = spell(word)
             if suggested.lower() == word.lower():
                 continue
