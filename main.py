@@ -38,7 +38,6 @@ keyboard = [
 ]
 reply_markup = InlineKeyboardMarkup(keyboard)
 
-last = dict()
 repo_gen = None
 skip_repo = False
 ignore_word = False
@@ -79,7 +78,7 @@ def get_a_repo(date):
             ignore_word = False
             approve_typo = False
 
-            yield repository, typo, suggested
+            yield repository, typo, suggested, readme
 
             if ignore_word:
                 add_to_ignore_list(typo)
@@ -111,15 +110,27 @@ def correct(repository, readme, typo, suggested):
 
 def send_next_word(bot, message_id=None):
     global last, repo_gen
+    key_markup = None
 
-    repository, typo, suggested = next(repo_gen)
+    try:
+        repository, typo, suggested, readme = next(repo_gen)
 
-    text = 'https://github.com/{}\n\n{} - {}'.format(repository.full_name, typo, suggested)
+        typo_pos = readme.find(typo)
+        context_end_pos = typo_pos + 100
+        context_start_pos = typo_pos - 100 if typo_pos - 100 > 0 else 0
+
+        context = readme[context_start_pos:context_end_pos] \
+            .replace(typo, '__{}__'.format(typo))
+
+        key_markup = reply_markup
+        text = 'https://github.com/{}\n\n{} - {}\n\n{}'.format(repository.full_name, typo, suggested, context)
+    except StopIteration:
+        text = 'You have reviewed all repositories for the date'
 
     if message_id is None:
-        bot.send_message(chat_id=TELEGRAM_USER_ID, text=text, reply_markup=reply_markup, disable_web_page_preview=True)
+        bot.send_message(chat_id=TELEGRAM_USER_ID, text=text, reply_markup=key_markup, disable_web_page_preview=True)
     else:
-        bot.edit_message_text(chat_id=TELEGRAM_USER_ID, message_id=message_id, text=text, reply_markup=reply_markup,
+        bot.edit_message_text(chat_id=TELEGRAM_USER_ID, message_id=message_id, text=text, reply_markup=key_markup,
                               disable_web_page_preview=True)
 
 
