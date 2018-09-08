@@ -59,6 +59,10 @@ def get_a_repo(date):
             if skip_repo:
                 break
 
+            # allow only one PR per repo. Be polite
+            if db.search(query.repo == repository.full_name):
+                continue
+
             # if more than 1 uppercase letter
             if 1 < sum(1 for l in word if l.isupper()):
                 continue
@@ -82,6 +86,7 @@ def get_a_repo(date):
             elif approve_typo:
                 print('approving', repository.full_name, typo, sep=' ')
                 correct(repository, readme, typo, suggested)
+                add_to_approved_list(repository.full_name, typo, suggested)
 
         skip_repo = False
 
@@ -179,6 +184,10 @@ def poll():
 
 def add_to_ignore_list(word):
     db.insert({'word': word.lower()})
+
+
+def add_to_approved_list(full_name, typo, suggested):
+    db.insert({'repo': full_name, 'typo': typo, 'suggested': suggested})
 
 
 def main():
