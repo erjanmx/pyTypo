@@ -63,8 +63,8 @@ def get_a_repo(date):
             if db.search(query.repo == repository.full_name):
                 continue
 
-            # if more than 1 uppercase letter
-            if 1 < sum(1 for l in word if l.isupper()):
+            # do not allow words with uppercase anywhere except the first letter
+            if 0 < sum(1 for l in word[1:] if l.isupper()):
                 continue
 
             suggested = spell(word)
