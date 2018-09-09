@@ -8,6 +8,7 @@ from github3 import GitHub
 from autocorrect import spell
 from dotenv import load_dotenv
 from tinydb import TinyDB, Query
+from github3.exceptions import NotFoundError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Filters, RegexHandler
 
@@ -124,7 +125,9 @@ def send_next_word(bot, message_id=None):
 
         key_markup = reply_markup
         text = 'https://github.com/{}\n\n{} - {}\n\n{}'.format(repository.full_name, typo, suggested, context)
-    except StopIteration:
+    except TypeError:
+        text = 'Session has expired'
+    except (StopIteration, NotFoundError):
         text = 'You have reviewed all repositories for the date'
 
     if message_id is None:
