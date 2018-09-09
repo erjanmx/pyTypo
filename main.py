@@ -101,7 +101,7 @@ def correct(repository, readme, typo, suggested):
     sleep(3)
     fork.create_branch_ref(fix_typo_branch, ref.object.sha)
 
-    modified_readme = readme.replace(typo, suggested)
+    modified_readme = re.sub(r'\b%s\b' % typo, suggested, readme)
     fork.readme().update('Fix typo', branch=fix_typo_branch, content=modified_readme.encode('utf-8'))
 
     # open pull request
