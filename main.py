@@ -5,6 +5,7 @@ import datetime
 
 from time import sleep
 from github3 import GitHub
+from langdetect import detect
 from autocorrect import spell
 from dotenv import load_dotenv
 from tinydb import TinyDB, Query
@@ -54,13 +55,26 @@ def get_a_repo(date):
         repository = repo.repository
         readme = repository.readme().decoded.decode('utf-8')
 
+        # skip if text is equal to repo name
+        readme_detected_language = detect(readme)
+        if readme_detected_language != 'en':
+            logger.info('Detected language is not English: "%s"', readme_detected_language)
+            continue
+
         words = set(filter(lambda w: re.search('^[a-zA-Z]{4,}$', w) is not None, readme.split()))
         for word in words:
             if skip_repo:
+                logger.info('Skipping repo "%s"', repository.full_name)
                 break
+
+            # skip if text is equal to repo name
+            if word.lower() == repository.name.lower():
+                logger.info('Word is equal to repo name "%s"', word)
+                continue
 
             # allow only one PR per repo. Be polite
             if db.search(query.repo == repository.full_name):
+                logger.info('Already sent PR to this repo "%s"', repository.full_name)
                 continue
 
             # do not allow words with uppercase anywhere except the first letter
@@ -197,10 +211,12 @@ def poll():
 
 
 def add_to_ignore_list(word):
+    logger.info('Ignoring word "%s"', word)
     db.insert({'word': word.lower()})
 
 
 def add_to_approved_list(full_name, typo, suggested):
+    logger.info('Adding to approved list "%s"', full_name)
     db.insert({'repo': full_name, 'typo': typo, 'suggested': suggested})
 
 
