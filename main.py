@@ -75,7 +75,7 @@ def get_a_repo(date):
             # allow only one PR per repo. Be polite
             if db.search(query.repo == repository.full_name):
                 logger.info('Already sent PR to this repo "%s"', repository.full_name)
-                continue
+                break
 
             # do not allow words with uppercase anywhere except the first letter
             if 0 < sum(1 for l in word[1:] if l.isupper()):
