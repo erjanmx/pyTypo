@@ -98,7 +98,7 @@ def get_a_repo(date):
             if ignore_word:
                 add_to_ignore_list(typo)
             elif approve_typo:
-                print('approving', repository.full_name, typo, sep=' ')
+                print('approving', repository.full_name, typo, suggested, sep=' ')
                 correct(repository, readme, typo, suggested)
                 add_to_approved_list(repository.full_name, typo, suggested)
 
@@ -108,19 +108,23 @@ def get_a_repo(date):
 def correct(repository, readme, typo, suggested):
     fork = repository.create_fork()
 
-    sleep(3)
-    ref = fork.ref('heads/master')
+    try:
+        sleep(3)
+        ref = fork.ref('heads/{}'.format(fork.default_branch))
 
-    fix_typo_branch = 'fix-readme-typo'
+        fix_typo_branch = 'fix-readme-typo'
 
-    sleep(3)
-    fork.create_branch_ref(fix_typo_branch, ref.object.sha)
+        sleep(3)
+        fork.create_branch_ref(fix_typo_branch, ref.object.sha)
 
-    modified_readme = re.sub(r'\b%s\b' % typo, suggested, readme)
-    fork.readme().update('Fix typo', branch=fix_typo_branch, content=modified_readme.encode('utf-8'))
+        modified_readme = re.sub(r'\b%s\b' % typo, suggested, readme)
+        fork.readme().update('Fix typo', branch=fix_typo_branch, content=modified_readme.encode('utf-8'))
 
-    # open pull request
-    repository.create_pull(title='Fix readme typo', base='master', head='erjanmx:{}'.format(fix_typo_branch))
+        # open pull request
+        repository.create_pull(title='Fix readme typo', base=fork.default_branch,
+                               head='erjanmx:{}'.format(fix_typo_branch))
+    finally:
+        fork.delete()
 
 
 def send_next_word(bot, message_id=None):
@@ -141,7 +145,8 @@ def send_next_word(bot, message_id=None):
         text = 'https://github.com/{}\n\n{} - {}\n\n{}'.format(repository.full_name, typo, suggested, context)
     except TypeError:
         text = 'Session has expired'
-    except (StopIteration, NotFoundError):
+    except (StopIteration, NotFoundError) as e:
+        logging.error(e)
         text = 'You have reviewed all repositories for the date'
 
     if message_id is None:
@@ -167,8 +172,8 @@ def callback_action(bot, update):
     elif q_data == 'approve':
         approve_typo = True
 
-    send_next_word(bot, message_id=query.message.message_id)
     bot.answer_callback_query(callback_query_id=query.id, text=q_data)
+    send_next_word(bot, message_id=query.message.message_id)
 
 
 def start(bot, update):
