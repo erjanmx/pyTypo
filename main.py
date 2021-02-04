@@ -9,7 +9,6 @@ from langdetect import detect
 from autocorrect import spell
 from dotenv import load_dotenv
 from tinydb import TinyDB, Query
-from github3.exceptions import NotFoundError
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, Filters, RegexHandler
 
@@ -40,14 +39,15 @@ keyboard = [
 ]
 reply_markup = InlineKeyboardMarkup(keyboard)
 
+date = ''
 repo_gen = None
 skip_repo = False
 ignore_word = False
 approve_typo = False
 
 
-def get_a_repo(date):
-    global skip_repo, approve_typo, ignore_word
+def get_a_repo():
+    global skip_repo, approve_typo, ignore_word, date
     query = Query()
     repos = gh.search_repositories('created:{0}..{0}'.format(date), order='stars')
 
@@ -109,26 +109,25 @@ def correct(repository, readme, typo, suggested):
     fork = repository.create_fork()
 
     try:
-        sleep(3)
-        ref = fork.ref('heads/{}'.format(fork.default_branch))
+        sleep(1)
+        ref = fork.ref('heads/{}'.format(repository.default_branch))
 
         fix_typo_branch = 'fix-readme-typo'
 
-        sleep(3)
         fork.create_branch_ref(fix_typo_branch, ref.object.sha)
 
         modified_readme = re.sub(r'\b%s\b' % typo, suggested, readme)
         fork.readme().update('Fix typo', branch=fix_typo_branch, content=modified_readme.encode('utf-8'))
 
         # open pull request
-        repository.create_pull(title='Fix readme typo', base=fork.default_branch,
+        repository.create_pull(title='Fix readme typo', base=repository.default_branch,
                                head='erjanmx:{}'.format(fix_typo_branch))
     finally:
         fork.delete()
 
 
-def send_next_word(bot, message_id=None):
-    global last, repo_gen
+def send_next_word(bot, message_id=None, update=None):
+    global last, repo_gen, date
     key_markup = None
 
     try:
@@ -142,22 +141,28 @@ def send_next_word(bot, message_id=None):
             .replace(typo, '__{}__'.format(typo))
 
         key_markup = reply_markup
-        text = 'https://github.com/{}\n\n{} - {}\n\n{}'.format(repository.full_name, typo, suggested, context)
+        text = '{}\n\nhttps://github.com/{}\n\n{} - {}\n\n{}'.format(
+            date, repository.full_name, typo, suggested, context
+        )
     except TypeError:
-        text = 'Session has expired'
-    except (StopIteration, NotFoundError) as e:
-        logging.error(e)
-        text = 'You have reviewed all repositories for the date'
+        start(bot, update)
+        return 'Session has expired'
+    except StopIteration:
+        text = 'You have reviewed all repositories for the {}'.format(date)
+    except Exception as e:
+        logging.exception(e)
+        return str(e)
 
     if message_id is None:
         bot.send_message(chat_id=TELEGRAM_USER_ID, text=text, reply_markup=key_markup, disable_web_page_preview=True)
     else:
         bot.edit_message_text(chat_id=TELEGRAM_USER_ID, message_id=message_id, text=text, reply_markup=key_markup,
                               disable_web_page_preview=True)
+    return None
 
 
 def callback_action(bot, update):
-    global skip_repo, approve_typo, ignore_word
+    global skip_repo, approve_typo, ignore_word, date
 
     query = update.callback_query
 
@@ -172,14 +177,23 @@ def callback_action(bot, update):
     elif q_data == 'approve':
         approve_typo = True
 
+    res = send_next_word(bot, message_id=query.message.message_id, update=update)
+
+    if res:
+        q_data = res
+
     bot.answer_callback_query(callback_query_id=query.id, text=q_data)
-    send_next_word(bot, message_id=query.message.message_id)
+
+
+def set_new_date():
+    global date
+    date = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
 
 
 def start(bot, update):
     global repo_gen
-    date = datetime.datetime.now() - datetime.timedelta(days=7)
-    repo_gen = get_a_repo(date.strftime('%Y-%m-%d'))
+    set_new_date()
+    repo_gen = get_a_repo()
     send_next_word(bot)
 
 
@@ -189,9 +203,9 @@ def stop(bot, update):
 
 
 def for_date(bot, update, groups):
-    global repo_gen
+    global repo_gen, date
     date = groups[0]
-    repo_gen = get_a_repo(date)
+    repo_gen = get_a_repo()
     send_next_word(bot)
 
 
