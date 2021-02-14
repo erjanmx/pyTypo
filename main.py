@@ -67,9 +67,9 @@ def get_a_repo():
                 logger.info('Skipping repo "%s"', repository.full_name)
                 break
 
-            # skip if text is equal to repo name
-            if word.lower() == repository.name.lower():
-                logger.info('Word is equal to repo name "%s"', word)
+            # skip if word is in repo name
+            if word.lower() in repository.full_name.lower():
+                logger.info('Repo fullname contains the word "%s"', word)
                 continue
 
             # allow only one PR per repo. Be polite
