@@ -3,7 +3,7 @@ autocorrect==0.3.0
 certifi==2018.8.24
 cffi==1.11.5
 chardet==3.0.4
-cryptography==3.2
+cryptography==3.3.2
 future==0.16.0
 github3.py==1.2.0
 idna==2.7
