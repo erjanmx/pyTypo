@@ -1,6 +1,7 @@
-import os
 import json
+import os
 import unittest
+
 from src.database import TinyDBProvider
 
 

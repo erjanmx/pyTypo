@@ -1,4 +1,5 @@
 import unittest
+
 from src.language_detector import LanguageDetector
 
 

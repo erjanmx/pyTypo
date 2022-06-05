@@ -1,4 +1,5 @@
 import unittest
+
 from src.typo import Typo
 
 
