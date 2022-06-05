@@ -1,27 +1,20 @@
-import re
-import logging
 import datetime
-from telegram import Update
-from telegram.ext import CallbackContext
+import logging
+import re
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
-    Updater,
-    CommandHandler,
+    CallbackContext,
     CallbackQueryHandler,
+    CommandHandler,
     Filters,
     RegexHandler,
-)
-from tinydb import TinyDB, Query
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
     Updater,
-    CommandHandler,
-    CallbackQueryHandler,
-    Filters,
-    RegexHandler,
 )
-from telegram import Update
-from src.Client import Client
+from tinydb import Query, TinyDB
+
 from src.action import Action
+from src.Client import Client
 from src.typo import Typo
 
 logger = logging.getLogger(__name__)

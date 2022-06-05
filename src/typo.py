@@ -1,4 +1,5 @@
 import string
+
 from github3.pulls import PullRequest
 
 MAX_WORDS_COUNT = 3

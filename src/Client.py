@@ -1,13 +1,15 @@
-import re
 import logging
-from github3.repos import Repository
+import re
+
 from github3.pulls import PullRequest
+from github3.repos import Repository
+
 from src.action import Action
-from src.typo import Typo
 from src.database import TinyDBProvider
 from src.github_client import GithubClient
-from src.typo_detector import TypoDetector
 from src.language_detector import LanguageDetector
+from src.typo import Typo
+from src.typo_detector import TypoDetector
 
 logger = logging.getLogger(__name__)
 

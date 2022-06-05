@@ -1,4 +1,4 @@
-from tinydb import TinyDB, Query
+from tinydb import Query, TinyDB
 
 
 class TinyDBProvider:

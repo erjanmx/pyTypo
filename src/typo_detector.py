@@ -1,5 +1,6 @@
-import re
 import logging
+import re
+
 from autocorrect import Speller
 
 MAX_TYPO_OCCURRENCES = 2

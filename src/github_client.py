@@ -1,7 +1,8 @@
 import logging
+
 from github3 import GitHub, exceptions
-from github3.repos.repo import Repository
 from github3.pulls import PullRequest
+from github3.repos.repo import Repository
 
 logger = logging.getLogger(__name__)
 

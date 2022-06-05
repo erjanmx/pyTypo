@@ -1,4 +1,5 @@
 import logging
+
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
 
