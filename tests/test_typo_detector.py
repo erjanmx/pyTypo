@@ -1,6 +1,5 @@
 import unittest
 from src.typo_detector import TypoDetector
-from autocorrect import Speller
 
 
 class TestTypoDetector(unittest.TestCase):
@@ -17,6 +16,14 @@ class TestTypoDetector(unittest.TestCase):
 
         test_text = "I'm not sleapy and tehre is no place I'm giong to."
         expected_typos = {'giong': 'going', 'sleapy': 'sleepy', 'tehre': 'there'}
+
+        self.assertEqual(expected_typos, detector.get_possible_typos(test_text))
+
+    def test_get_possible_typos_capital_letters(self):
+        detector = TypoDetector()
+
+        test_text = "Possibel WSGI desingX"
+        expected_typos = {'Possibel': 'Possible'}
 
         self.assertEqual(expected_typos, detector.get_possible_typos(test_text))
 

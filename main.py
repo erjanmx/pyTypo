@@ -106,6 +106,10 @@ def get_a_repo():
 
 
 def correct(repository, readme, typo, suggested):
+    logger.info('correct func called')
+    print(repository, readme, typo, suggested)
+    return
+
     fork = repository.create_fork()
 
     try:
@@ -219,7 +223,7 @@ def poll():
 
     dp.add_handler(CommandHandler("start", start, filters=Filters.user(user_id=TELEGRAM_USER_ID)))
     dp.add_handler(CommandHandler("stop", stop, filters=Filters.user(user_id=TELEGRAM_USER_ID)))
-    dp.add_handler(RegexHandler('([\d]{4}-[\d]{2}-[\d]{2})', for_date, pass_groups=True))
+    dp.add_handler(RegexHandler(r'([\d]{4}-[\d]{2}-[\d]{2})', for_date, pass_groups=True))
 
     dp.add_handler(CallbackQueryHandler(callback_action))
 
