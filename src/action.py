@@ -1,8 +1,7 @@
 from enum import Enum, unique
 
 
-@unique
-class Action(Enum):
+class Action:
     SKIP_WORD = "sk-word"
     SKIP_REPO = "sk-repo"
     IGNORE_WORD = "ig-word"

@@ -22,7 +22,7 @@ class TypoDetector:
     def is_possible_typo(self, word) -> bool:
         return word != self.speller.autocorrect_word(word)
 
-    def get_possible_typos(self, text: str) -> dict:
+    def get_possible_typos_with_suggestions(self, text: str) -> dict:
         words = self.get_unique_words(text)
 
         possible_typos = {}

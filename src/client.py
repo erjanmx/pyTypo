@@ -2,7 +2,6 @@ import logging
 import re
 
 from github3.pulls import PullRequest
-from github3.repos import Repository
 
 from src.action import Action
 from src.database import TinyDBProvider
@@ -49,7 +48,7 @@ class Client:
                 logger.info("Readme is not in English")
                 continue
 
-            suggestions = self.typo_detector.get_possible_typos(readme)
+            suggestions = self.typo_detector.get_possible_typos_with_suggestions(readme)
 
             for maybe_typo, suggestion in suggestions.items():
                 # skip if the "typo" word is in repo name
@@ -61,6 +60,10 @@ class Client:
                     logger.info('"%s" is in ignore list', maybe_typo)
                     continue
 
+                if len(repository.full_name + maybe_typo + suggestion) > 54:
+                    logger.info("Too long")
+                    continue
+
                 typo = Typo(
                     repository=repository.full_name,
                     readme=readme,
@@ -69,22 +72,29 @@ class Client:
                 )
                 action = yield typo
 
-                if action == Action.IGNORE_WORD.value:
+                if action == Action.IGNORE_WORD:
                     self.ignore_word(maybe_typo)
-                elif action in [Action.SKIP_REPO.value, ACTION_APPROVE_REPO]:
+                elif action in [Action.SKIP_REPO, ACTION_APPROVE_REPO]:
                     break
 
     def ignore_word(self, word: str):
-        logger.info(f"Adding {word} to ignore list")
         self.database.add_to_ignored(word)
 
     def create_pull_request(self, typo: Typo) -> PullRequest:
         readme = self.github.get_repository_readme(typo.repository)
         modified_readme = re.sub(r"\b%s\b" % typo.word, typo.suggested, readme)
 
-        # print('pull request')
-        # return
-
         return self.github.create_fix_typo_pull_request(
             typo.repository, modified_readme=modified_readme
         )
+
+    def approve(self, typo: Typo):
+        self.create_pull_request(typo)
+        self.database.add_to_approved(
+            typo.repository, typo=typo.word, suggested=typo.suggested
+        )
+
+    def delete_fork_repository(self, repository: str):
+        _, repo_name = repository.split("/")
+        fork_repo_name = f"{self.github.get_me()}/{repo_name}"
+        return self.github.delete_repository(fork_repo_name)

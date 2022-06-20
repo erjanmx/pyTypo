@@ -14,7 +14,7 @@ from telegram.ext import (
 from tinydb import Query, TinyDB
 
 from src.action import Action
-from src.Client import Client
+from src.client import Client
 from src.typo import Typo
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class Bot:
 
     def get_inline_keyboard(self, typo: Typo):
         def a(action, typo):
-            return f"{action.value}|{typo.repository}|{typo.word}|{typo.suggested}"
+            return f"{action}|{typo.repository}|{typo.word}|{typo.suggested}"
 
         keyboard = [
             [
@@ -50,7 +50,7 @@ class Bot:
 
     def get_inline_keyboard2(self, typo: Typo):
         def a(action, typo):
-            return f"{action.value}|{typo.repository}|{typo.word}|{typo.suggested}"
+            return f"{action}|{typo.repository}|{typo.word}|{typo.suggested}"
 
         keyboard = [
             [
@@ -75,7 +75,7 @@ class Bot:
         self.init_handlers()
 
     def handler_start(self, update: Update, context: CallbackContext):
-        self.look_date = datetime.datetime.now() - datetime.timedelta(days=8)
+        self.look_date = datetime.datetime.now() - datetime.timedelta(days=9)
 
         self.repo_generator = self.client.get_repo_typo(
             self.look_date.strftime("%Y-%m-%d")
@@ -98,23 +98,15 @@ class Bot:
 
         typo = Typo(repository=repository, word=word, suggested=suggested)
 
-        if action == Action.APPROVE_REPO.value:
-            typo.pull_request = self.client.create_pull_request(typo)
+        if action == Action.APPROVE_REPO:
+            self.client.approve(typo)
 
             context.bot.edit_message_reply_markup(
                 chat_id=self.chat_id,
                 message_id=query.message.message_id,
-                reply_markup=self.get_inline_keyboard2(typo),
+                reply_markup=None,
             )
             message_id = None
-        elif action == Action.DELETE_FORK.value:
-            _, repo_name = typo.repository.split("/")
-            fork_repo_name = f"{self.client.github.get_me()}/{repo_name}"
-            self.client.github.delete_repository(fork_repo_name)
-
-            return context.bot.answer_callback_query(
-                callback_query_id=query.id, text=action
-            )
 
         if self.repo_generator is None:
             self.look_date = datetime.datetime.now() - datetime.timedelta(days=8)

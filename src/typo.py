@@ -1,13 +1,11 @@
 import string
 
-from github3.pulls import PullRequest
-
 MAX_WORDS_COUNT = 3
-STOP_CHARS = [".", ",", "!", "?", ":", ";", "|", "#", "\n"]
+STOP_CHARS = [".", ",", "!", "?", ":", ";", "|", "#", "(", ")", "<", ">", "\n"]
 
 
 class Typo:
-    pull_request = None | PullRequest
+    id: int = None
 
     def __init__(self, repository: str, word: str, suggested: str, readme: str = None):
         self.repository = repository
@@ -40,7 +38,3 @@ class Typo:
             context_tail = context_tail + char
 
         return context_head.strip(), context_tail.strip()
-
-    # @property
-    # def pull_request(self) -> PullRequest:
-    #     return self.pull_request
