@@ -1,3 +1,4 @@
+import datetime
 import logging
 import re
 
@@ -15,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 class Client:
     def __init__(self, github: GithubClient, database: TinyDBProvider):
+
+        self.repo_generator = None
+        self.look_date = None
         self.github = github
         self.database = database
         self.typo_detector = TypoDetector()
@@ -88,3 +92,13 @@ class Client:
         _, repo_name = repository.split("/")
         fork_repo_name = f"{self.github.get_me()}/{repo_name}"
         return self.github.delete_repository(fork_repo_name)
+
+    def init(self):
+        self.look_date = datetime.datetime.now() - datetime.timedelta(days=9)
+
+        self.repo_generator = self.get_repo_typo(
+            self.look_date.strftime("%Y-%m-%d")
+        )
+
+    def get_date(self):
+        return self.look_date.strftime("%Y-%m-%d")

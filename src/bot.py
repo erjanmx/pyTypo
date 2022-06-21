@@ -34,20 +34,16 @@ def get_inline_keyboard(typo: Typo):
 
 
 class Bot:
-    look_date = None
-    repo_generator = None
+    # look_date = None
+    # repo_generator = None
 
     def __init__(self, token: str, chat_id: int, client: Client):
-        self.updater = Updater(token)
         self.client = client
         self.chat_id = chat_id
+        self.updater = Updater(token)
 
     def handler_start(self, update: Update, context: CallbackContext):
-        self.look_date = datetime.datetime.now() - datetime.timedelta(days=9)
-
-        self.repo_generator = self.client.get_repo_typo(
-            self.look_date.strftime("%Y-%m-%d")
-        )
+        self.client.init()
         self.send_next_candidate(context.bot)
 
     def handler_callback(self, update, context):
@@ -75,28 +71,23 @@ class Bot:
             )
             message_id = None
 
-        self.repo_generator.send(action)
         context.bot.answer_callback_query(callback_query_id=query.id, text=action, show_alert=True)
+        self.client.repo_generator.send(action)
         self.send_next_candidate(context.bot, message_id)
 
     def send_next_candidate(self, bot, message_id=None):
         try:
-            typo = next(self.repo_generator)
+            typo = next(self.client.repo_generator)
 
-            date = self.look_date.strftime("%Y-%m-%d")
-
-            text = f'{date}\n\n' \
+            text = f'{self.client.get_date()}\n\n' \
                    f'{typo.get_repository_url()}\n\n' \
                    f'{typo.word} ➡ {typo.suggested} ({typo.get_count()})\n\n' \
                    f'<pre>{typo.get_context()}</pre>'
 
             key_markup = get_inline_keyboard(typo)
         except StopIteration:
-            self.look_date -= datetime.timedelta(days=1)
-            self.repo_generator = self.client.get_repo_typo(
-                self.look_date.strftime("%Y-%m-%d")
-            )
-            return self.send_next_candidate(bot, message_id)
+            return
+            # return self.handler_start()
 
         if message_id is None:
             bot.send_message(
