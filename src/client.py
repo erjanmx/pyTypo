@@ -12,12 +12,6 @@ from src.typo_detector import TypoDetector
 
 logger = logging.getLogger(__name__)
 
-EMPTY_DICT = {}
-ACTION_SKIP_WORD = "action-skip-word"
-ACTION_SKIP_REPO = "action-skip-repo"
-ACTION_IGNORE_WORD = "action-ignore-word"
-ACTION_APPROVE_REPO = "action-approve-typo"
-
 
 class Client:
     def __init__(self, github: GithubClient, database: TinyDBProvider):
@@ -26,26 +20,24 @@ class Client:
         self.typo_detector = TypoDetector()
         self.language_detector = LanguageDetector()
 
-    def get_repos(self, date):
-        return self.github.get_most_starred_repos_for_date(date)
-
     def get_repo_typo(self, date):
-        repos = self.get_repos(date)
+        repositories = self.github.get_most_starred_repos_for_date(date)
 
-        for repo in repos:
+        for repo in repositories:
             repository = repo.repository
 
             if self.database.is_already_approved_repo(repository.full_name):
-                logger.info("Already had PR")
+                logger.debug(f'Already had PR in "{repository.full_name}" repo, skipping')
                 continue
 
             readme = self.github.get_repository_readme(repository)
 
             if readme == "":
+                logger.debug("Readme is empty, skipping")
                 continue
 
             if not self.language_detector.is_english(readme):
-                logger.info("Readme is not in English")
+                logger.debug("Readme is not in English, skipping")
                 continue
 
             suggestions = self.typo_detector.get_possible_typos_with_suggestions(readme)
@@ -53,15 +45,15 @@ class Client:
             for maybe_typo, suggestion in suggestions.items():
                 # skip if the "typo" word is in repo name
                 if maybe_typo.lower() in repository.full_name.lower():
-                    logger.info('Repo name contains the word "%s"', maybe_typo)
+                    logger.debug('Repo name contains the word "%s"', maybe_typo)
                     continue
 
                 if self.database.is_ignored(maybe_typo):
-                    logger.info('"%s" is in ignore list', maybe_typo)
+                    logger.debug('"%s" is in ignore list', maybe_typo)
                     continue
 
                 if len(repository.full_name + maybe_typo + suggestion) > 54:
-                    logger.info("Too long")
+                    logger.debug(f'Repo name "{repository.full_name}" is too long')
                     continue
 
                 typo = Typo(
@@ -70,15 +62,13 @@ class Client:
                     word=maybe_typo,
                     suggested=suggestion,
                 )
+
                 action = yield typo
 
                 if action == Action.IGNORE_WORD:
-                    self.ignore_word(maybe_typo)
-                elif action in [Action.SKIP_REPO, ACTION_APPROVE_REPO]:
+                    self.database.add_to_ignored(maybe_typo)
+                elif action in [Action.SKIP_REPO, Action.APPROVE_REPO]:
                     break
-
-    def ignore_word(self, word: str):
-        self.database.add_to_ignored(word)
 
     def create_pull_request(self, typo: Typo) -> PullRequest:
         readme = self.github.get_repository_readme(typo.repository)
@@ -88,7 +78,7 @@ class Client:
             typo.repository, modified_readme=modified_readme
         )
 
-    def approve(self, typo: Typo):
+    def approve_typo(self, typo: Typo):
         self.create_pull_request(typo)
         self.database.add_to_approved(
             typo.repository, typo=typo.word, suggested=typo.suggested

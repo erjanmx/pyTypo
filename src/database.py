@@ -13,6 +13,7 @@ class TinyDBProvider:
         self.db.close()
 
     def add_to_approved(self, repository_name: str, typo: str, suggested: str) -> int:
+        logger.info(f'Adding "{repository_name}" to approved repo list')
         return self.db.insert(
             {
                 "repo": repository_name.lower(),

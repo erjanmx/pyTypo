@@ -75,7 +75,7 @@ class GithubClient:
 
             return pull_request
         except Exception as e:
-            # fork.delete()
             logger.exception("Deleting fork")
+            fork.delete()
 
             raise e

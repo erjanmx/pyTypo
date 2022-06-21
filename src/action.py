@@ -1,6 +1,3 @@
-from enum import Enum, unique
-
-
 class Action:
     SKIP_WORD = "sk-word"
     SKIP_REPO = "sk-repo"
