@@ -1,4 +1,5 @@
 import logging
+
 from tinydb import Query, TinyDB
 
 logger = logging.getLogger(__name__)

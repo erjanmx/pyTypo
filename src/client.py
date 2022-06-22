@@ -1,6 +1,7 @@
 import datetime
 import logging
 import re
+from collections import Counter
 
 from github3.pulls import PullRequest
 
@@ -9,18 +10,21 @@ from src.database import TinyDBProvider
 from src.github_client import GithubClient
 from src.language_detector import LanguageDetector
 from src.typo import Typo
-from src.typo_detector import TypoDetector
+from src.typo_detector import MAX_TYPO_OCCURRENCES, TypoDetector
 
 logger = logging.getLogger(__name__)
 
+MIN_OCCURRENCE_COUNT_TO_IGNORE = 50
+
 
 class Client:
-    def __init__(self, github: GithubClient, database: TinyDBProvider):
+    look_date = None
+    repo_generator = None
 
-        self.repo_generator = None
-        self.look_date = None
+    def __init__(self, github: GithubClient, database: TinyDBProvider):
         self.github = github
         self.database = database
+        self.counter = Counter()
         self.typo_detector = TypoDetector()
         self.language_detector = LanguageDetector()
 
@@ -31,7 +35,9 @@ class Client:
             repository = repo.repository
 
             if self.database.is_already_approved_repo(repository.full_name):
-                logger.debug(f'Already had PR in "{repository.full_name}" repo, skipping')
+                logger.debug(
+                    f'Already had PR in "{repository.full_name}" repo, skipping'
+                )
                 continue
 
             readme = self.github.get_repository_readme(repository)
@@ -60,6 +66,22 @@ class Client:
                     logger.debug(f'Repo name "{repository.full_name}" is too long')
                     continue
 
+                if self.can_ignore(
+                    maybe_typo.lower(), readme.lower().count(maybe_typo.lower())
+                ):
+                    logger.info(
+                        f'Too many occurrences of word "{maybe_typo}" in total - {self.counter.get(maybe_typo.lower())}'
+                        f"adding to ignore list"
+                    )
+                    self.add_to_ignored(maybe_typo)
+                    continue
+
+                if readme.count(maybe_typo) > MAX_TYPO_OCCURRENCES:
+                    logger.debug(
+                        f'Too many occurrences of possible typo "{maybe_typo}" in text - {readme.count(maybe_typo)}'
+                    )
+                    continue
+
                 typo = Typo(
                     repository=repository.full_name,
                     readme=readme,
@@ -67,12 +89,19 @@ class Client:
                     suggested=suggestion,
                 )
 
+                if not self.language_detector.is_english(typo.get_context()):
+                    logger.debug("Typo context is not in English, skipping")
+                    continue
+
                 action = yield typo
 
-                if action == Action.IGNORE_WORD:
-                    self.database.add_to_ignored(maybe_typo)
-                elif action in [Action.SKIP_REPO, Action.APPROVE_REPO]:
+                if action in [Action.SKIP_REPO, Action.APPROVE_REPO]:
                     break
+
+    def can_ignore(self, word: str, cnt) -> bool:
+        self.counter.update([word] * cnt)
+
+        return self.counter.get(word) >= MIN_OCCURRENCE_COUNT_TO_IGNORE
 
     def create_pull_request(self, typo: Typo) -> PullRequest:
         readme = self.github.get_repository_readme(typo.repository)
@@ -82,11 +111,13 @@ class Client:
             typo.repository, modified_readme=modified_readme
         )
 
-    def approve_typo(self, typo: Typo):
-        self.create_pull_request(typo)
+    def create_pull_request_with_fix(self, typo: Typo) -> PullRequest:
+        pull_request = self.create_pull_request(typo)
+
         self.database.add_to_approved(
             typo.repository, typo=typo.word, suggested=typo.suggested
         )
+        return pull_request
 
     def delete_fork_repository(self, repository: str):
         _, repo_name = repository.split("/")
@@ -94,11 +125,18 @@ class Client:
         return self.github.delete_repository(fork_repo_name)
 
     def init(self):
-        self.look_date = datetime.datetime.now() - datetime.timedelta(days=9)
+        if self.repo_generator:
+            return
 
-        self.repo_generator = self.get_repo_typo(
-            self.look_date.strftime("%Y-%m-%d")
-        )
+        self.look_date = datetime.datetime.now() - datetime.timedelta(days=10)
+
+        self.repo_generator = self.get_repo_typo(self.look_date.strftime("%Y-%m-%d"))
 
     def get_date(self):
         return self.look_date.strftime("%Y-%m-%d")
+
+    def add_to_ignored(self, word: str):
+        if self.counter.get(word.lower()):
+            self.counter.pop(word.lower())
+
+        self.database.add_to_ignored(word)

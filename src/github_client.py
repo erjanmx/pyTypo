@@ -5,6 +5,7 @@ from github3.pulls import PullRequest
 from github3.repos.repo import Repository
 
 logger = logging.getLogger(__name__)
+logging.getLogger("github3").setLevel(logging.WARNING)
 
 TYPO_BRANCH_NAME = "fix-readme-typo"
 TYPO_COMMIT_MESSAGE = "Fix readme typo"
@@ -24,7 +25,7 @@ class GithubClient:
         return self.gh.me()
 
     def get_repository_by_name(self, name: str) -> Repository:
-        owner, repository_name = name.split("/")
+        owner, repository_name = name.replace("https://github.com/", "").split("/")
 
         return self.gh.repository(owner, repository_name)
 

@@ -43,4 +43,4 @@ class Typo:
         return self.readme.count(self.word)
 
     def get_repository_url(self):
-        return f'https://github.com/{self.repository}'
+        return f"https://github.com/{self.repository}"
