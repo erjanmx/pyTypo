@@ -80,3 +80,7 @@ class GithubClient:
             fork.delete()
 
             raise e
+
+    @staticmethod
+    def get_repo_link(repository) -> str:
+        return f"https://github.com/{repository}"

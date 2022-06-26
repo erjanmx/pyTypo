@@ -9,7 +9,7 @@ from src.action import Action
 from src.database import TinyDBProvider
 from src.github_client import GithubClient
 from src.language_detector import LanguageDetector
-from src.typo import Typo
+from src.repo_readme_typo import RepoReadmeTypo
 from src.typo_detector import MAX_TYPO_OCCURRENCES, TypoDetector
 
 logger = logging.getLogger(__name__)
@@ -62,27 +62,26 @@ class Client:
                     logger.debug('"%s" is in ignore list', maybe_typo)
                     continue
 
-                if len(repository.full_name + maybe_typo + suggestion) > 54:
+                if len(repository.full_name + maybe_typo + suggestion) > 54:  # fixme
                     logger.debug(f'Repo name "{repository.full_name}" is too long')
                     continue
 
-                if self.can_ignore(
-                    maybe_typo.lower(), readme.lower().count(maybe_typo.lower())
-                ):
+                if self.check_counter(maybe_typo, readme):
                     logger.info(
-                        f'Too many occurrences of word "{maybe_typo}" in total - {self.counter.get(maybe_typo.lower())}'
-                        f"adding to ignore list"
+                        f'Too many occurrences of word "{maybe_typo}" in total - '
+                        f'{self.counter.get(maybe_typo.lower())}, adding to ignore list'
                     )
                     self.add_to_ignored(maybe_typo)
                     continue
 
                 if readme.count(maybe_typo) > MAX_TYPO_OCCURRENCES:
                     logger.debug(
-                        f'Too many occurrences of possible typo "{maybe_typo}" in text - {readme.count(maybe_typo)}'
+                        f'Too many occurrences of possible typo "{maybe_typo}" '
+                        f'in text - {readme.count(maybe_typo)}, skipping'
                     )
                     continue
 
-                typo = Typo(
+                typo = RepoReadmeTypo(
                     repository=repository.full_name,
                     readme=readme,
                     word=maybe_typo,
@@ -98,12 +97,17 @@ class Client:
                 if action in [Action.SKIP_REPO, Action.APPROVE_REPO]:
                     break
 
-    def can_ignore(self, word: str, cnt) -> bool:
-        self.counter.update([word] * cnt)
+    def check_counter(self, word: str, readme: str) -> bool:
+        self.counter.update([word.lower()] * readme.lower().count(word.lower()))
 
-        return self.counter.get(word) >= MIN_OCCURRENCE_COUNT_TO_IGNORE
+        can_ignore = self.counter.get(word.lower()) >= MIN_OCCURRENCE_COUNT_TO_IGNORE
 
-    def create_pull_request(self, typo: Typo) -> PullRequest:
+        if can_ignore:
+            self.counter.pop(word.lower())
+
+        return can_ignore
+
+    def create_pull_request(self, typo: RepoReadmeTypo) -> PullRequest:
         readme = self.github.get_repository_readme(typo.repository)
         modified_readme = re.sub(r"\b%s\b" % typo.word, typo.suggested, readme)
 
@@ -111,7 +115,7 @@ class Client:
             typo.repository, modified_readme=modified_readme
         )
 
-    def create_pull_request_with_fix(self, typo: Typo) -> PullRequest:
+    def create_pull_request_with_fix(self, typo: RepoReadmeTypo) -> PullRequest:
         pull_request = self.create_pull_request(typo)
 
         self.database.add_to_approved(
@@ -121,7 +125,9 @@ class Client:
 
     def delete_fork_repository(self, repository: str):
         _, repo_name = repository.split("/")
+
         fork_repo_name = f"{self.github.get_me()}/{repo_name}"
+
         return self.github.delete_repository(fork_repo_name)
 
     def init(self):
@@ -130,13 +136,10 @@ class Client:
 
         self.look_date = datetime.datetime.now() - datetime.timedelta(days=10)
 
-        self.repo_generator = self.get_repo_typo(self.look_date.strftime("%Y-%m-%d"))
+        self.repo_generator = self.get_repo_typo(self.get_date())
 
     def get_date(self):
         return self.look_date.strftime("%Y-%m-%d")
 
     def add_to_ignored(self, word: str):
-        if self.counter.get(word.lower()):
-            self.counter.pop(word.lower())
-
         self.database.add_to_ignored(word)

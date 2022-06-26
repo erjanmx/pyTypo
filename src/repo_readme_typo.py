@@ -4,7 +4,7 @@ MAX_WORDS_COUNT = 2
 STOP_CHARS = [".", ",", "!", "?", ":", ";", "|", "*", "#", "(", ")", "<", ">", "\n"]
 
 
-class Typo:
+class RepoReadmeTypo:
     id: int = None
 
     def __init__(self, repository: str, word: str, suggested: str, readme: str = None):
@@ -17,7 +17,7 @@ class Typo:
         # get position of the word in text
         typo_at = self.readme.find(self.word)
 
-        # get two words prior to typo-word in text
+        # get MAX_WORDS_COUNT words prior to typo-word in text
         context_head = ""
         for char in self.readme[:typo_at][::-1]:
             if char in STOP_CHARS or (
@@ -27,7 +27,7 @@ class Typo:
                 break
             context_head = char + context_head
 
-        # get two wor#ds after the typo-word in text
+        # get MAX_WORDS_COUNT words after the typo-word in text
         context_tail = ""
         for char in self.readme[typo_at + len(self.word) :]:
             if char in STOP_CHARS or (
@@ -39,8 +39,5 @@ class Typo:
 
         return f"{context_head.strip()} *{self.word}* {context_tail.strip()}".strip()
 
-    def get_count(self):
+    def get_word_readme_occurrence_count(self):
         return self.readme.count(self.word)
-
-    def get_repository_url(self):
-        return f"https://github.com/{self.repository}"

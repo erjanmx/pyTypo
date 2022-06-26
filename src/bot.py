@@ -11,13 +11,9 @@ from telegram.ext import (
 
 from src.action import Action
 from src.client import Client
-from src.typo import Typo
+from src.repo_readme_typo import RepoReadmeTypo
 
 logger = logging.getLogger(__name__)
-
-
-def build_callback_data(action, typo: Typo):
-    return f"{action}|{typo.repository}|{typo.word}|{typo.suggested}"
 
 
 class Bot:
@@ -57,14 +53,14 @@ class Bot:
             self.client.add_to_ignored(word)
 
         elif action == Action.APPROVE_REPO:
-            typo = Typo(repository=repository, word=word, suggested=suggested)
+            typo = RepoReadmeTypo(repository=repository, word=word, suggested=suggested)
             pull_request = self.client.create_pull_request_with_fix(typo)
 
             keyboard = [
                 [
                     InlineKeyboardButton(
                         "Close PR",
-                        callback_data=build_callback_data(Action.DELETE_FORK, typo),
+                        callback_data=self.build_callback_data(Action.DELETE_FORK, typo),
                     ),
                     InlineKeyboardButton(
                         "Browse PR", url=f"{pull_request.html_url}/files"
@@ -97,29 +93,29 @@ class Bot:
 
         text = (
             f"{self.client.get_date()}\n\n"
-            f"{typo.get_repository_url()}\n\n"
-            f"{typo.word} ➡ {typo.suggested} ({typo.get_count()})\n\n"
+            f"{self.client.github.get_repo_link(typo.repository)}\n\n"
+            f"{typo.word} ➡ {typo.suggested} ({typo.get_word_readme_occurrence_count()})\n\n"
             f"<pre>{typo.get_context()}</pre>"
         )
 
         keyboard = [
             [
                 InlineKeyboardButton(
-                    "Skip", callback_data=build_callback_data(Action.SKIP_WORD, typo)
+                    "Skip", callback_data=self.build_callback_data(Action.SKIP_WORD, typo)
                 ),
                 InlineKeyboardButton(
                     "Skip repo",
-                    callback_data=build_callback_data(Action.SKIP_REPO, typo),
+                    callback_data=self.build_callback_data(Action.SKIP_REPO, typo),
                 ),
                 InlineKeyboardButton(
                     "Ignore",
-                    callback_data=build_callback_data(Action.IGNORE_WORD, typo),
+                    callback_data=self.build_callback_data(Action.IGNORE_WORD, typo),
                 ),
             ],
             [
                 InlineKeyboardButton(
                     "Approve",
-                    callback_data=build_callback_data(Action.APPROVE_REPO, typo),
+                    callback_data=self.build_callback_data(Action.APPROVE_REPO, typo),
                 )
             ],
         ]
@@ -155,3 +151,7 @@ class Bot:
     @staticmethod
     def handler_error(update: Update, context: CallbackContext):
         logger.error('Update "%s" caused error "%s"', update, context.error)
+
+    @staticmethod
+    def build_callback_data(action, typo: RepoReadmeTypo):
+        return f"{action}|{typo.repository}|{typo.word}|{typo.suggested}"

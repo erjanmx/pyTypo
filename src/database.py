@@ -14,6 +14,9 @@ class TinyDBProvider:
         self.db.close()
 
     def add_to_approved(self, repository_name: str, typo: str, suggested: str) -> int:
+        if self.is_already_approved_repo(repository_name):
+            return -1
+
         logger.info(f'Adding "{repository_name}" to approved repo list')
         return self.db.insert(
             {
@@ -23,10 +26,12 @@ class TinyDBProvider:
             }
         )
 
-    def add_to_ignored(self, word: str):
-        if not self.is_ignored(word):
-            logger.info(f'Adding "{word}" to ignore list')
-            self.db.insert({"word": word.lower()})
+    def add_to_ignored(self, word: str) -> int:
+        if self.is_ignored(word):
+            return -1
+
+        logger.info(f'Adding "{word}" to ignore list')
+        self.db.insert({"word": word.lower()})
 
     def is_ignored(self, word):
         return self.db.search(self.query.word == word.lower())

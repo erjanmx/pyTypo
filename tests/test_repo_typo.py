@@ -1,6 +1,6 @@
 import unittest
 
-from src.typo import Typo
+from src.repo_readme_typo import RepoReadmeTypo
 
 
 class TestRepoTypo(unittest.TestCase):
@@ -9,7 +9,7 @@ class TestRepoTypo(unittest.TestCase):
         test_typo = "sumple"
         test_suggested = "simple"
 
-        repo_typo = Typo(
+        repo_typo = RepoReadmeTypo(
             repository="", readme=test_readme, word=test_typo, suggested=test_suggested
         )
         context_head, context_tail = repo_typo.get_context()
@@ -30,7 +30,7 @@ class TestRepoTypo(unittest.TestCase):
         test_typo = "Scalar"
         test_suggested = "Scala"
 
-        repo_typo = Typo(
+        repo_typo = RepoReadmeTypo(
             repository="", readme=test_readme, word=test_typo, suggested=test_suggested
         )
 
@@ -52,7 +52,7 @@ https
         test_typo = "Pretraining"
         test_suggested = "Retaining"
 
-        repo_typo = Typo(
+        repo_typo = RepoReadmeTypo(
             repository="", readme=test_readme, word=test_typo, suggested=test_suggested
         )
 

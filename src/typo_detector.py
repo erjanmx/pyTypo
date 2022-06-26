@@ -24,36 +24,42 @@ class TypoDetector:
     def is_possible_typo(self, word: str) -> bool:
         autocorrected_word = self.speller.autocorrect_word(word)
 
+        def variant(prefix, s1, s2):
+            return not (f"{prefix}{s1}".lower() == s2.lower() or f"{prefix}{s2}".lower() == s1.lower())
+
+        # story - stories
         if (
             self.inflect.plural(word) == autocorrected_word
             or self.inflect.plural(autocorrected_word) == word
         ):
             return False
 
-        if (
-            f"un{word}".lower() == autocorrected_word.lower()
-            or f"un{autocorrected_word}".lower() == word.lower()
-        ):
+        # set - unset
+        if variant('un', word, autocorrected_word):
             return False
 
+        # placed - replaced
         if (
             f"re{word}".lower() == autocorrected_word.lower()
             or f"re{autocorrected_word}".lower() == word.lower()
         ):
             return False
 
+        # compress - decompress
         if (
             f"de{word}".lower() == autocorrected_word.lower()
             or f"de{autocorrected_word}".lower() == word.lower()
         ):
             return False
 
+        # strong - strongly
         if (
             f"{word}ly".lower() == autocorrected_word.lower()
             or f"{autocorrected_word}ly".lower() == word.lower()
         ):
             return False
 
+        # force - forced
         if (
             f"{word}d".lower() == autocorrected_word.lower()
             or f"{autocorrected_word}d".lower() == word.lower()
@@ -73,9 +79,5 @@ class TypoDetector:
 
             if self.is_possible_typo(word):
                 possible_typos[word] = self.speller.autocorrect_word(word)
-
-                # first_candidate, confidence = Word(word).spellcheck()[0]
-                # if word != first_candidate and confidence > 0.9:
-                #     possible_typos[word] = self.speller.autocorrect_word(word)
 
         return possible_typos
