@@ -9,7 +9,7 @@ class TestTypoDetector(unittest.TestCase):
 
         self.assertCountEqual(
             detector.get_unique_words("Here is a sample text to be split"),
-            ["Here", "text", "split", "sample"],
+            ["text", "split", "sample"],
         )
 
     def test_get_possible_typos(self):
@@ -25,8 +25,8 @@ class TestTypoDetector(unittest.TestCase):
     def test_get_possible_typos_capital_letters(self):
         detector = TypoDetector()
 
-        test_text = "Possibel WSGI desingX"
-        expected_typos = {"Possibel": "Possible"}
+        test_text = "Possibel possibel WSGI desingX"
+        expected_typos = {"possibel": "possible"}
 
         self.assertEqual(
             expected_typos, detector.get_possible_typos_with_suggestions(test_text)

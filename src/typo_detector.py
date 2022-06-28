@@ -5,7 +5,7 @@ import inflect
 from autocorrect import Speller
 
 MAX_TYPO_OCCURRENCES = 2
-WORDS_REGEX = "^[a-zA-Z]{4,}$"
+WORDS_REGEX = "^[a-z]{4,}$"
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +24,11 @@ class TypoDetector:
     def is_possible_typo(self, word: str) -> bool:
         autocorrected_word = self.speller.autocorrect_word(word)
 
-        def variant(prefix, s1, s2):
-            return not (f"{prefix}{s1}".lower() == s2.lower() or f"{prefix}{s2}".lower() == s1.lower())
+        def variant(word_1, word_2, prefix="", suffix=""):
+            return (
+                f"{prefix}{word_1}{suffix}".lower() == word_2.lower()
+                or f"{prefix}{word_2}{suffix}".lower() == word_1.lower()
+            )
 
         # story - stories
         if (
@@ -35,35 +38,23 @@ class TypoDetector:
             return False
 
         # set - unset
-        if variant('un', word, autocorrected_word):
+        if variant(word, autocorrected_word, prefix="un"):
             return False
 
         # placed - replaced
-        if (
-            f"re{word}".lower() == autocorrected_word.lower()
-            or f"re{autocorrected_word}".lower() == word.lower()
-        ):
+        if variant(word, autocorrected_word, prefix="re"):
             return False
 
         # compress - decompress
-        if (
-            f"de{word}".lower() == autocorrected_word.lower()
-            or f"de{autocorrected_word}".lower() == word.lower()
-        ):
+        if variant(word, autocorrected_word, prefix="de"):
             return False
 
         # strong - strongly
-        if (
-            f"{word}ly".lower() == autocorrected_word.lower()
-            or f"{autocorrected_word}ly".lower() == word.lower()
-        ):
+        if variant(word, autocorrected_word, suffix="ly"):
             return False
 
         # force - forced
-        if (
-            f"{word}d".lower() == autocorrected_word.lower()
-            or f"{autocorrected_word}d".lower() == word.lower()
-        ):
+        if variant(word, autocorrected_word, suffix="d"):
             return False
 
         return word != autocorrected_word
@@ -73,10 +64,6 @@ class TypoDetector:
 
         possible_typos = {}
         for word in words:
-            # skip words with uppercase anywhere but first letter
-            if 0 < sum(1 for letter in word[1:] if letter.isupper()):
-                continue
-
             if self.is_possible_typo(word):
                 possible_typos[word] = self.speller.autocorrect_word(word)
 

@@ -21,7 +21,7 @@ class GithubClient:
             "created:{0}..{0}".format(date), order="stars"
         )
 
-    def get_me(self):
+    def get_me(self) -> str:
         return self.gh.me()
 
     def get_repository_by_name(self, name: str) -> Repository:
@@ -29,18 +29,18 @@ class GithubClient:
 
         return self.gh.repository(owner, repository_name)
 
-    def get_repository_readme(self, repository) -> str:
+    def get_repository_readme(self, repository: object) -> str:
         try:
             if isinstance(repository, str):
                 repository = self.get_repository_by_name(repository)
 
             return repository.readme().decoded.decode("utf-8")
-        except exceptions.NotFoundError:
-            logger.warning("No readme found")
+        except exceptions.NotFoundError as e:
+            logger.debug(f"No readme found: {e}")
 
         return ""
 
-    def delete_repository(self, repository) -> bool:
+    def delete_repository(self, repository: object) -> bool:
         try:
             if isinstance(repository, str):
                 repository = self.get_repository_by_name(repository)
@@ -50,9 +50,30 @@ class GithubClient:
             logger.warning("No Repo found")
         return False
 
+    def delete_fork_repository(self, repository) -> bool:
+        """
+        Deletes fork repository on current user's repo list
+
+        :param repository:
+        :return: bool
+        """
+
+        _, repo_name = repository.split("/")
+
+        fork_repo_name = f"{self.get_me()}/{repo_name}"
+
+        return self.delete_repository(fork_repo_name)
+
     def create_fix_typo_pull_request(
         self, typo_readme_repository, modified_readme
     ) -> PullRequest:
+        """
+        Clone repo and create a PullRequest with typo fix
+
+        :param typo_readme_repository: str
+        :param modified_readme: str
+        :return: PullRequest
+        """
         repo = self.get_repository_by_name(typo_readme_repository)
 
         fork = repo.create_fork()

@@ -12,10 +12,9 @@ class TestRepoTypo(unittest.TestCase):
         repo_typo = RepoReadmeTypo(
             repository="", readme=test_readme, word=test_typo, suggested=test_suggested
         )
-        context_head, context_tail = repo_typo.get_context()
+        context = repo_typo.get_typo_with_context()
 
-        self.assertEqual("This is", context_head)
-        self.assertEqual("text", context_tail)
+        self.assertEqual("This is *sumple* text", context)
 
     def test_get_typo_context_2(self):
         test_readme = """code-block::
@@ -34,10 +33,9 @@ class TestRepoTypo(unittest.TestCase):
             repository="", readme=test_readme, word=test_typo, suggested=test_suggested
         )
 
-        context_head, context_tail = repo_typo.get_context()
+        context = repo_typo.get_typo_with_context()
 
-        self.assertEqual("", context_head)
-        self.assertEqual("example", context_tail)
+        self.assertEqual("*Scalar* example", context)
 
     def test_get_typo_context_3(self):
         test_readme = """
@@ -56,10 +54,9 @@ https
             repository="", readme=test_readme, word=test_typo, suggested=test_suggested
         )
 
-        context_head, context_tail = repo_typo.get_context()
+        context = repo_typo.get_typo_with_context()
 
-        self.assertEqual("Large-scale", context_head)
-        self.assertEqual("for Text-to-Video Generation", context_tail)
+        self.assertEqual("Large-scale *Pretraining* for Text-to-Video Generation", context)
 
 
 if __name__ == "__main__":

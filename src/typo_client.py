@@ -14,19 +14,23 @@ from src.typo_detector import MAX_TYPO_OCCURRENCES, TypoDetector
 
 logger = logging.getLogger(__name__)
 
+DAYS_TO_LOOK_BACK = 7
 MIN_OCCURRENCE_COUNT_TO_IGNORE = 50
 
 
-class Client:
-    look_date = None
+class TypoClient:
     repo_generator = None
 
-    def __init__(self, github: GithubClient, database: TinyDBProvider):
+    def __init__(self, github: GithubClient, database: TinyDBProvider, typo_detector: TypoDetector):
         self.github = github
         self.database = database
+        self.typo_detector = typo_detector
         self.counter = Counter()
-        self.typo_detector = TypoDetector()
         self.language_detector = LanguageDetector()
+
+        self.look_date = datetime.datetime.now() - datetime.timedelta(
+            days=DAYS_TO_LOOK_BACK
+        )
 
     def get_repo_typo(self, date):
         repositories = self.github.get_most_starred_repos_for_date(date)
@@ -62,23 +66,12 @@ class Client:
                     logger.debug('"%s" is in ignore list', maybe_typo)
                     continue
 
-                if len(repository.full_name + maybe_typo + suggestion) > 54:  # fixme
-                    logger.debug(f'Repo name "{repository.full_name}" is too long')
-                    continue
-
                 if self.check_counter(maybe_typo, readme):
                     logger.info(
                         f'Too many occurrences of word "{maybe_typo}" in total - '
-                        f'{self.counter.get(maybe_typo.lower())}, adding to ignore list'
+                        f"{self.counter.get(maybe_typo.lower())}, adding to ignore list"
                     )
                     self.add_to_ignored(maybe_typo)
-                    continue
-
-                if readme.count(maybe_typo) > MAX_TYPO_OCCURRENCES:
-                    logger.debug(
-                        f'Too many occurrences of possible typo "{maybe_typo}" '
-                        f'in text - {readme.count(maybe_typo)}, skipping'
-                    )
                     continue
 
                 typo = RepoReadmeTypo(
@@ -88,9 +81,20 @@ class Client:
                     suggested=suggestion,
                 )
 
-                if not self.language_detector.is_english(typo.get_context()):
+                if typo.get_word_readme_occurrence_count() > MAX_TYPO_OCCURRENCES:
+                    logger.debug(
+                        f'Too many occurrences of possible typo "{maybe_typo}" '
+                        f"in text - {readme.count(maybe_typo)}, skipping"
+                    )
+                    continue
+
+                if not self.language_detector.is_english(typo.get_typo_with_context()):
                     logger.debug("Typo context is not in English, skipping")
                     continue
+
+                if len(repository.full_name + maybe_typo + suggestion) > 54:  # fixme
+                    logger.debug(f'Repo name "{repository.full_name}" is too long')
+                    break
 
                 action = yield typo
 
@@ -98,48 +102,54 @@ class Client:
                     break
 
     def check_counter(self, word: str, readme: str) -> bool:
-        self.counter.update([word.lower()] * readme.lower().count(word.lower()))
+        """
+        Keep track of most frequent words across all repos
 
-        can_ignore = self.counter.get(word.lower()) >= MIN_OCCURRENCE_COUNT_TO_IGNORE
+        :param word: str
+        :param readme: str
+        :return: bool
+        """
+        word_lower = word.lower()
+
+        self.counter.update([word_lower] * readme.lower().count(word_lower))
+
+        can_ignore = self.counter.get(word_lower) >= MIN_OCCURRENCE_COUNT_TO_IGNORE
 
         if can_ignore:
-            self.counter.pop(word.lower())
+            self.counter.pop(word_lower)
 
         return can_ignore
 
-    def create_pull_request(self, typo: RepoReadmeTypo) -> PullRequest:
+    def create_pull_request_with_fix(self, typo: RepoReadmeTypo) -> PullRequest:
         readme = self.github.get_repository_readme(typo.repository)
-        modified_readme = re.sub(r"\b%s\b" % typo.word, typo.suggested, readme)
+        modified_readme = re.sub(
+            r"\b%s\b" % typo.maybe_typo, typo.suggested_word, readme
+        )
 
         return self.github.create_fix_typo_pull_request(
             typo.repository, modified_readme=modified_readme
         )
 
-    def create_pull_request_with_fix(self, typo: RepoReadmeTypo) -> PullRequest:
-        pull_request = self.create_pull_request(typo)
-
-        self.database.add_to_approved(
-            typo.repository, typo=typo.word, suggested=typo.suggested
-        )
-        return pull_request
-
-    def delete_fork_repository(self, repository: str):
-        _, repo_name = repository.split("/")
-
-        fork_repo_name = f"{self.github.get_me()}/{repo_name}"
-
-        return self.github.delete_repository(fork_repo_name)
-
-    def init(self):
+    def init_generator(self):
         if self.repo_generator:
             return
 
-        self.look_date = datetime.datetime.now() - datetime.timedelta(days=10)
-
         self.repo_generator = self.get_repo_typo(self.get_date())
 
-    def get_date(self):
+    def delete_fork_repository(self, repository: str) -> bool:
+        return self.github.delete_fork_repository(repository)
+
+    def get_date(self) -> str:
         return self.look_date.strftime("%Y-%m-%d")
 
+    def lower_look_date(self, offset=1):
+        self.repo_generator = None
+        self.look_date -= datetime.timedelta(days=offset)
+
     def add_to_ignored(self, word: str):
-        self.database.add_to_ignored(word)
+        return self.database.add_to_ignored(word)
+
+    def add_to_approved(self, typo: RepoReadmeTypo):
+        return self.database.add_to_approved(
+            typo.repository, typo=typo.maybe_typo, suggested=typo.suggested_word
+        )
