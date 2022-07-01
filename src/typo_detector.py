@@ -49,6 +49,10 @@ class TypoDetector:
         if variant(word, autocorrected_word, prefix="de"):
             return False
 
+        # complete - incomplete
+        if variant(word, autocorrected_word, prefix="in"):
+            return False
+
         # strong - strongly
         if variant(word, autocorrected_word, suffix="ly"):
             return False
