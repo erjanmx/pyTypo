@@ -4,6 +4,7 @@ import re
 from collections import Counter
 
 from github3.pulls import PullRequest
+from github3.repos.repo import Repository
 
 from src.action import Action
 from src.database import TinyDBProvider
@@ -14,6 +15,7 @@ from src.typo_detector import MAX_TYPO_OCCURRENCES, TypoDetector
 
 logger = logging.getLogger(__name__)
 
+MIN_REPO_STARS = 30  # minimum amount of stargazers of the repo to be checked for typos
 DAYS_TO_LOOK_BACK = 7
 MIN_OCCURRENCE_COUNT_TO_IGNORE = 50
 
@@ -36,7 +38,11 @@ class TypoClient:
         repositories = self.github.get_most_starred_repos_for_date(date)
 
         for repo in repositories:
-            repository = repo.repository
+            repository: Repository = repo.repository
+
+            if repository.stargazers_count < MIN_REPO_STARS:
+                logger.debug(f'Repo does not meet min stars requirement, skipping')
+                break  # repos are sorted desc by stars so there is no point looking further
 
             if self.database.is_already_approved_repo(repository.full_name):
                 logger.debug(
@@ -130,6 +136,9 @@ class TypoClient:
             typo.repository, modified_readme=modified_readme
         )
 
+    def reset_generator(self):
+        self.repo_generator = None
+
     def init_generator(self):
         if self.repo_generator:
             return
@@ -143,7 +152,7 @@ class TypoClient:
         return self.look_date.strftime("%Y-%m-%d")
 
     def lower_look_date(self, offset=1):
-        self.repo_generator = None
+        self.reset_generator()
         self.look_date -= datetime.timedelta(days=offset)
 
     def add_to_ignored(self, word: str):

@@ -24,6 +24,7 @@ class Bot:
         self.updater = Updater(token)
 
     def handler_start(self, update: Update, context: CallbackContext):
+        self.client.reset_generator()
         self.send_next_candidate(context.bot)
 
     def handler_callback(self, update, context):
