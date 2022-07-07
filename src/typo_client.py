@@ -21,18 +21,23 @@ MIN_OCCURRENCE_COUNT_TO_IGNORE = 50
 
 
 class TypoClient:
+    look_date = None
     repo_generator = None
 
-    def __init__(self, github: GithubClient, database: TinyDBProvider, typo_detector: TypoDetector):
+    def __init__(
+        self,
+        github: GithubClient,
+        database: TinyDBProvider,
+        typo_detector: TypoDetector,
+    ):
         self.github = github
         self.database = database
         self.typo_detector = typo_detector
         self.counter = Counter()
         self.language_detector = LanguageDetector()
 
-        self.look_date = datetime.datetime.now() - datetime.timedelta(
-            days=DAYS_TO_LOOK_BACK
-        )
+        self.reset_generator()
+        self.reset_look_date()
 
     def get_repo_typo(self, date):
         repositories = self.github.get_most_starred_repos_for_date(date)
@@ -41,7 +46,7 @@ class TypoClient:
             repository: Repository = repo.repository
 
             if repository.stargazers_count < MIN_REPO_STARS:
-                logger.debug(f'Repo does not meet min stars requirement, skipping')
+                logger.debug(f"Repo does not meet min stars requirement, skipping")
                 break  # repos are sorted desc by stars so there is no point looking further
 
             if self.database.is_already_approved_repo(repository.full_name):
@@ -138,6 +143,11 @@ class TypoClient:
 
     def reset_generator(self):
         self.repo_generator = None
+
+    def reset_look_date(self):
+        self.look_date = datetime.datetime.now() - datetime.timedelta(
+            days=DAYS_TO_LOOK_BACK
+        )
 
     def init_generator(self):
         if self.repo_generator:

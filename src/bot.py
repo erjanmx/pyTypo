@@ -24,7 +24,7 @@ class Bot:
         self.updater = Updater(token)
 
     def handler_start(self, update: Update, context: CallbackContext):
-        self.client.reset_generator()
+        self.client.reset_look_date()
         self.send_next_candidate(context.bot)
 
     def handler_callback(self, update, context):
@@ -33,7 +33,7 @@ class Bot:
         except Exception as e:
             logger.exception(e)
             self.client.lower_look_date()
-            self.handler_start(update, context)
+            self.send_next_candidate(context.bot)
 
     def query_callback(self, update: Update, context: CallbackContext):
         query = update.callback_query
@@ -155,7 +155,11 @@ class Bot:
         if message_id is None:
             bot.send_message(**kwargs)
         else:
-            bot.edit_message_text(message_id=message_id, **kwargs)
+            try:
+                bot.edit_message_text(message_id=message_id, **kwargs)
+            except BadRequest:
+                logger.exception("Edit message exception")
+                self.send_next_candidate(bot, message_id)
 
     def init_handlers(self):
         """
