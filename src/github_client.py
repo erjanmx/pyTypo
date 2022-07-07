@@ -1,4 +1,5 @@
 import logging
+import urllib.parse
 
 from github3 import GitHub, exceptions
 from github3.pulls import PullRequest
@@ -105,3 +106,15 @@ class GithubClient:
     @staticmethod
     def get_repo_link(repository) -> str:
         return f"https://github.com/{repository}"
+
+    @staticmethod
+    def get_repo_link_with_context(repository: str, context: str) -> str:
+        """
+        Build a link to the specific part of the GitHub repository readme page
+        see https://support.google.com/chrome/answer/10256233
+
+        :param repository: string
+        :param context: string
+        :return: string
+        """
+        return f"https://github.com/{repository}#:~:text={urllib.parse.quote(context)}"

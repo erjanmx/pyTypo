@@ -107,12 +107,15 @@ class Bot:
             self.send_next_candidate(bot, message_id)
             return
 
+        context = typo.get_typo_with_context()
+
         text = (
             f"{self.client.get_date()}\n\n"
             f"{self.client.github.get_repo_link(typo.repository)}\n\n"
             f"{typo.maybe_typo} ➡ {typo.suggested_word} ({typo.get_word_readme_occurrence_count()})\n\n"
-            f"<pre>{typo.get_typo_with_context()}</pre>"
-        )
+            f'<a href="{self.client.github.get_repo_link_with_context(typo.repository, context)}">'
+            f"{context.replace(typo.maybe_typo, f'<b><u>{typo.maybe_typo}</u></b>')}</a>"
+        )  # Android client can't render urls with "underline" format, so adding "bold" as well
 
         keyboard = [
             [

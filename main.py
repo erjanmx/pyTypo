@@ -2,14 +2,14 @@ import json
 import logging
 import os
 
+from autocorrect import Speller
 from dotenv import load_dotenv
 
 from src.bot import Bot
 from src.database import TinyDBProvider
 from src.github_client import GithubClient
-from src.typo_detector import TypoDetector
 from src.typo_client import TypoClient
-from autocorrect import Speller
+from src.typo_detector import TypoDetector
 
 load_dotenv()
 
@@ -28,11 +28,13 @@ logger = logging.getLogger(__name__)
 
 def main():
     # custom words data for autocorrect.Speller
-    with open('data/word_count.json') as file:
+    with open("data/word_count.json") as file:
         speller = Speller(nlp_data=json.load(file))
 
     client = TypoClient(
-        github=GithubClient(GITHUB_TOKEN), database=TinyDBProvider(DB_PATH), typo_detector=TypoDetector(speller)
+        github=GithubClient(GITHUB_TOKEN),
+        database=TinyDBProvider(DB_PATH),
+        typo_detector=TypoDetector(speller),
     )
     bot = Bot(TELEGRAM_TOKEN, chat_id=TELEGRAM_USER_ID, client=client)
     bot.start_polling()

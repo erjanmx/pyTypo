@@ -1,7 +1,24 @@
 import string
 
 MAX_WORDS_COUNT = 2
-STOP_CHARS = [".", ",", "!", "?", ":", ";", "|", "*", "#", "(", ")", "<", ">", "\n"]
+STOP_CHARS = [
+    ".",
+    ",",
+    "!",
+    "?",
+    ":",
+    ";",
+    "|",
+    "*",
+    "#",
+    "(",
+    ")",
+    "<",
+    ">",
+    "[",
+    "]",
+    "\n",
+]
 
 
 class RepoReadmeTypo:
@@ -43,7 +60,7 @@ class RepoReadmeTypo:
             context_tail = context_tail + char
 
         return (
-            f"{context_head.strip()} *{self.maybe_typo}* {context_tail.strip()}".strip()
+            f"{context_head.strip()} {self.maybe_typo} {context_tail.strip()}".strip()
         )
 
     def get_word_readme_occurrence_count(self) -> int:

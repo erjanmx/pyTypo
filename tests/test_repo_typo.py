@@ -14,7 +14,7 @@ class TestRepoTypo(unittest.TestCase):
         )
         context = repo_typo.get_typo_with_context()
 
-        self.assertEqual("This is *sumple* text", context)
+        self.assertEqual("This is sumple text", context)
 
     def test_get_typo_context_2(self):
         test_readme = """code-block::
@@ -35,7 +35,7 @@ class TestRepoTypo(unittest.TestCase):
 
         context = repo_typo.get_typo_with_context()
 
-        self.assertEqual("*Scalar* example", context)
+        self.assertEqual("Scalar example", context)
 
     def test_get_typo_context_3(self):
         test_readme = """
@@ -56,7 +56,9 @@ https
 
         context = repo_typo.get_typo_with_context()
 
-        self.assertEqual("Large-scale *Pretraining* for Text-to-Video Generation", context)
+        self.assertEqual(
+            "Large-scale Pretraining for Text-to-Video Generation", context
+        )
 
 
 if __name__ == "__main__":
