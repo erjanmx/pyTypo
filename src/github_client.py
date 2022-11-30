@@ -22,6 +22,9 @@ class GithubClient:
             "created:{0}..{0}".format(date), order="stars"
         )
 
+    def get_my_public_repositories(self):
+        return self.gh.repositories(type="public")
+
     def get_me(self) -> str:
         return self.gh.me()
 

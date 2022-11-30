@@ -164,6 +164,15 @@ class Bot:
                 logger.exception("Edit message exception")
                 self.send_next_candidate(bot, message_id)
 
+    def delete_forks_with_closed_pull_requests(self, context):
+        """
+        Runs periodically and deletes all forks with closed PRs
+
+        :param context:
+        :return:
+        """
+        self.client.delete_forks_with_closed_pull_requests()
+
     def init_handlers(self):
         """
         Initialize bot command handlers
@@ -188,6 +197,13 @@ class Bot:
         """
         self.init_handlers()
         self.updater.start_polling()
+
+        self.updater.job_queue.run_repeating(
+            callback=self.delete_forks_with_closed_pull_requests,
+            first=60,  # first run after a minute
+            interval=60 * 60 * 24,  # run daily
+        )
+
         self.updater.idle()
 
     @staticmethod

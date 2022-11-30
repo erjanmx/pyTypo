@@ -3,12 +3,13 @@ import logging
 import re
 from collections import Counter
 
+from github3.exceptions import NotFoundError, UnavailableForLegalReasons
 from github3.pulls import PullRequest
 from github3.repos.repo import Repository
 
 from src.action import Action
 from src.database import TinyDBProvider
-from src.github_client import GithubClient
+from src.github_client import TYPO_BRANCH_NAME, GithubClient
 from src.language_detector import LanguageDetector
 from src.repo_readme_typo import RepoReadmeTypo
 from src.typo_detector import MAX_TYPO_OCCURRENCES, TypoDetector
@@ -172,3 +173,29 @@ class TypoClient:
         return self.database.add_to_approved(
             typo.repository, typo=typo.maybe_typo, suggested=typo.suggested_word
         )
+
+    def delete_forks_with_closed_pull_requests(self):
+        public_repos = self.github.get_my_public_repositories()
+
+        pull_request_head = "{}:{}".format(self.github.get_me(), TYPO_BRANCH_NAME)
+
+        for repo in public_repos:
+            if not repo.fork:
+                continue
+            logger.debug(f'Checking "{repo}" for deletion')
+
+            try:
+                repo = repo.refresh()  # get full repo details
+                parent_repo = repo.parent
+
+                my_pull_requests = parent_repo.pull_requests(
+                    state="closed", number=1, head=pull_request_head
+                )
+                for _ in my_pull_requests:
+                    # PR was closed, we can delete our fork now
+                    if self.github.delete_repository(repo):
+                        logger.info(f'"{repo}" has been successfully deleted')
+                    else:
+                        logger.warning(f'Failed to delete fork "{repo}"')
+            except (UnavailableForLegalReasons, NotFoundError) as e:
+                logger.warning(f'Error "{e}" occurred during deletion of "{repo}"')
