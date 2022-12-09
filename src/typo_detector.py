@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 import inflect
@@ -6,6 +7,7 @@ from autocorrect import Speller
 
 MAX_TYPO_OCCURRENCES = 2
 WORDS_REGEX = "^[a-z]{4,}$"
+PATH = os.path.abspath(os.path.dirname(__file__))
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,15 @@ class TypoDetector:
         self.inflect = inflect.engine()
         self.speller = speller if speller else Speller()
 
+        self.words = self.load_words()
+
+    @staticmethod
+    def load_words():
+        with open(os.path.join(PATH, f"../data/words_alpha.txt")) as word_file:
+            valid_words = set(word_file.read().split())
+
+        return valid_words
+
     @staticmethod
     def get_unique_words(text: str) -> list:
         return list(
@@ -22,6 +33,9 @@ class TypoDetector:
         )
 
     def is_possible_typo(self, word: str) -> bool:
+        if word in self.words:
+            return False
+
         autocorrected_word = self.speller.autocorrect_word(word)
 
         def variant(word_1, word_2, prefix="", suffix=""):
