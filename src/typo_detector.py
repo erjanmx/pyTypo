@@ -21,7 +21,7 @@ class TypoDetector:
 
     @staticmethod
     def load_words():
-        with open(os.path.join(PATH, f"../data/words_alpha.txt")) as word_file:
+        with open(os.path.join(PATH, "../data/words_alpha.txt")) as word_file:
             valid_words = set(word_file.read().split())
 
         return valid_words
@@ -86,3 +86,13 @@ class TypoDetector:
                 possible_typos[word] = self.speller.autocorrect_word(word)
 
         return possible_typos
+
+    def get_typos_with_suggestions(self, text: str) -> dict:
+        words = self.get_unique_words(text)
+
+        typos = {}
+        for word in words:
+            if self.is_typo(word):
+                typos[word] = self.speller.autocorrect_word(word)
+
+        return typos

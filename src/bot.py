@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import BadRequest
@@ -173,6 +174,61 @@ class Bot:
         """
         self.client.delete_forks_with_closed_pull_requests()
 
+    def send_auto_typo_fixes(self, context: CallbackContext):
+        """
+        Runs periodically and sends auto typo fixes
+
+        :param max_amount:
+        :return:
+        """
+        max_amount = 3
+        k = 0
+        self.client.init_generator()
+
+        while k < max_amount:
+            try:
+                typo = next(self.client.repo_generator)
+            except StopIteration:
+                break
+
+            pull_request = self.client.create_pull_request_with_fix(typo)
+            k += 1
+
+            self.client.add_to_approved(typo)
+
+            typo_context = typo.get_typo_with_context()
+
+            text = (
+                f"{self.client.get_date()}\n\n"
+                f"{self.client.github.get_repo_link(typo.repository)}\n\n"
+                f"{typo.maybe_typo} ➡ {typo.suggested_word} ({typo.get_word_readme_occurrence_count()})\n\n"
+                f'<a href="{self.client.github.get_repo_link_with_context(typo.repository, typo_context)}">'
+                f"{typo_context.replace(typo.maybe_typo, f'<b><u>{typo.maybe_typo}</u></b>')}</a>"
+            )
+
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Close PR",
+                        callback_data=self.build_callback_button_data(
+                            Action.DELETE_FORK, typo
+                        ),
+                    ),
+                    InlineKeyboardButton(
+                        "Browse PR", url=f"{pull_request.html_url}/files"
+                    ),
+                ],
+            ]
+
+            kwargs = {
+                "text": text,
+                "chat_id": self.chat_id,
+                "reply_markup": InlineKeyboardMarkup(keyboard),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }
+            context.bot.send_message(**kwargs)
+
     def init_handlers(self):
         """
         Initialize bot command handlers
@@ -202,6 +258,10 @@ class Bot:
             callback=self.delete_forks_with_closed_pull_requests,
             first=60,  # first run after a minute
             interval=60 * 60 * 24,  # run daily
+        )
+        self.updater.job_queue.run_daily(
+            callback=self.send_auto_typo_fixes,
+            time=datetime.time(hour=20)
         )
 
         self.updater.idle()

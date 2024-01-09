@@ -66,7 +66,6 @@ class RepoReadmeTypo:
     def get_word_readme_occurrence_count(self) -> int:
         """
         Count how many times typo-word occurs in readme
-
         :return: int
         """
         return self.readme.count(self.maybe_typo)

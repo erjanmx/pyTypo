@@ -47,7 +47,7 @@ class TypoClient:
             repository: Repository = repo.repository
 
             if repository.stargazers_count < MIN_REPO_STARS:
-                logger.debug(f"Repo does not meet min stars requirement, skipping")
+                logger.debug("Repo does not meet min stars requirement, skipping")
                 break  # repos are sorted desc by stars so there is no point looking further
 
             if self.database.is_already_approved_repo(repository.full_name):
