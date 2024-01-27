@@ -1,0 +1,10 @@
+version: '3.7'
+
+services:
+  pytypo_bot:
+    container_name: pyTypo-bot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python3 main.py
+    restart: always
