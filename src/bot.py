@@ -1,4 +1,7 @@
 import logging
+import datetime
+import pytz
+from time import sleep
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import BadRequest
@@ -13,8 +16,12 @@ from telegram.ext import (
 from src.action import Action
 from src.repo_readme_typo import RepoReadmeTypo
 from src.typo_client import TypoClient
+from src.typo_detector_dict import TypoDetectorDict
 
 logger = logging.getLogger(__name__)
+
+MAX_AUTO_TYPOS_PER_DAY = 3
+SLEEP_BETWEEN_PULL_REQUESTS = 3
 
 
 class Bot:
@@ -107,16 +114,6 @@ class Bot:
             self.send_next_candidate(bot, message_id)
             return
 
-        context = typo.get_typo_with_context()
-
-        text = (
-            f"{self.client.get_date()}\n\n"
-            f"{self.client.github.get_repo_link(typo.repository)}\n\n"
-            f"{typo.maybe_typo} ➡ {typo.suggested_word} ({typo.get_word_readme_occurrence_count()})\n\n"
-            f'<a href="{self.client.github.get_repo_link_with_context(typo.repository, context)}">'
-            f"{context.replace(typo.maybe_typo, f'<b><u>{typo.maybe_typo}</u></b>')}</a>"
-        )  # Android client can't render urls with "underline" format, so adding "bold" as well
-
         keyboard = [
             [
                 InlineKeyboardButton(
@@ -149,7 +146,7 @@ class Bot:
         ]
 
         kwargs = {
-            "text": text,
+            "text": self.build_text(typo),
             "chat_id": self.chat_id,
             "reply_markup": InlineKeyboardMarkup(keyboard),
             "parse_mode": "HTML",
@@ -172,6 +169,58 @@ class Bot:
         :return:
         """
         self.client.delete_forks_with_closed_pull_requests()
+
+    def send_daily_typo_fixes(self, bot):
+        """
+        Runs daily and sends auto typo fixes
+
+        :return:
+        """
+        td = self.client.typo_detector
+        self.client.reset_look_date()
+        self.client.reset_generator()
+        try:
+            self.client.typo_detector = TypoDetectorDict()
+            self.send_typo_fixes(bot)
+        except StopIteration:
+            pass
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            self.client.typo_detector = td
+
+    def send_typo_fixes(self, bot):
+        self.client.init_generator()
+
+        for _ in range(MAX_AUTO_TYPOS_PER_DAY):
+            typo = next(self.client.repo_generator)
+
+            sleep(SLEEP_BETWEEN_PULL_REQUESTS)
+            pull_request = self.client.create_pull_request_with_fix(typo)
+            self.client.add_to_approved(typo)
+
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "Close PR",
+                        callback_data=self.build_callback_button_data(
+                            Action.DELETE_FORK, typo
+                        ),
+                    ),
+                    InlineKeyboardButton(
+                        "Browse PR", url=f"{pull_request.html_url}/files"
+                    ),
+                ],
+            ]
+
+            kwargs = {
+                "text": self.build_text(typo),
+                "chat_id": self.chat_id,
+                "reply_markup": InlineKeyboardMarkup(keyboard),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            }
+            bot.send_message(**kwargs)
 
     def init_handlers(self):
         """
@@ -204,6 +253,14 @@ class Bot:
             interval=60 * 60 * 24,  # run daily
         )
 
+        self.updater.job_queue.run_daily(
+            callback=self.send_daily_typo_fixes,
+            time=datetime.time(
+                hour=20, minute=0, second=0,
+                tzinfo=pytz.timezone("Europe/Amsterdam")
+            ),
+        )
+
         self.updater.idle()
 
     @staticmethod
@@ -220,3 +277,13 @@ class Bot:
     @staticmethod
     def handler_error(update: Update, context: CallbackContext):
         logger.error('Update "%s" caused error "%s"', update, context.error)
+
+    def build_text(self, typo: RepoReadmeTypo):
+        context = typo.get_typo_with_context()
+        return (
+            f"{self.client.get_date()}\n\n"
+            f"{self.client.github.get_repo_link(typo.repository)}\n\n"
+            f"{typo.maybe_typo} ➡ {typo.suggested_word} ({typo.get_word_readme_occurrence_count()})\n\n"
+            f'<a href="{self.client.github.get_repo_link_with_context(typo.repository, context)}">'
+            f"{context.replace(typo.maybe_typo, f'<b><u>{typo.maybe_typo}</u></b>')}</a>"
+        )  # Android client can't render urls with "underline" format, so adding "bold" as well

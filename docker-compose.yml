@@ -8,3 +8,5 @@ services:
       dockerfile: Dockerfile
     command: python3 main.py
     restart: always
+    volumes:
+      - .:/app
