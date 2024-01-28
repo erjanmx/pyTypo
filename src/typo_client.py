@@ -1,10 +1,10 @@
 import datetime
 import logging
 import re
+import pytz
 from collections import Counter
 from time import sleep
 
-from github3.exceptions import NotFoundError, UnavailableForLegalReasons
 from github3.pulls import PullRequest
 from github3.repos.repo import Repository
 
@@ -180,6 +180,7 @@ class TypoClient:
         public_repos = self.github.get_my_public_repositories()
 
         pull_request_head = "{}:{}".format(self.github.get_me(), TYPO_BRANCH_NAME)
+        six_months_ago = datetime.datetime.now(pytz.UTC) - datetime.timedelta(days=180)
 
         for repo in public_repos:
             if not repo.fork:
@@ -191,13 +192,18 @@ class TypoClient:
                 parent_repo = repo.parent
 
                 my_pull_requests = parent_repo.pull_requests(
-                    state="closed", number=1, head=pull_request_head
+                    state="all", number=1, head=pull_request_head
                 )
-                for _ in my_pull_requests:
-                    # PR was closed, we can delete our fork now
-                    if self.github.delete_repository(repo):
-                        logger.info(f'"{repo}" has been successfully deleted')
-                    else:
-                        logger.warning(f'Failed to delete fork "{repo}"')
-            except (UnavailableForLegalReasons, NotFoundError) as e:
-                logger.warning(f'Error "{e}" occurred during deletion of "{repo}"')
+                for pr in my_pull_requests:
+                    if pr.state == "open":
+                        if pr.created_at < six_months_ago:
+                            logger.info(f'Closing "{parent_repo}" PR since it has been open for too long')
+                            pr.close()
+                    elif pr.state == "closed":
+                        # PR was closed, we can delete our fork now
+                        if self.github.delete_repository(repo):
+                            logger.info(f'"{repo}" has been successfully deleted')
+                        else:
+                            logger.warning(f'Failed to delete fork "{repo}"')
+            except Exception as e:
+                logger.warning(f'Error "{e}" occurred during processing of "{repo}"')
