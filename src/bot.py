@@ -170,7 +170,7 @@ class Bot:
         """
         self.client.delete_forks_with_closed_pull_requests()
 
-    def send_daily_typo_fixes(self, bot):
+    def send_daily_typo_fixes(self, context):
         """
         Runs daily and sends auto typo fixes
 
@@ -181,7 +181,7 @@ class Bot:
         self.client.reset_generator()
         try:
             self.client.typo_detector = TypoDetectorDict()
-            self.send_typo_fixes(bot)
+            self.send_typo_fixes(context.bot)
         except StopIteration:
             pass
         except Exception as e:
