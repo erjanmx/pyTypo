@@ -1,5 +1,6 @@
 import logging
 import urllib.parse
+from time import sleep
 
 from github3 import GitHub, exceptions
 from github3.pulls import PullRequest
@@ -79,12 +80,14 @@ class GithubClient:
         :return: PullRequest
         """
         repo = self.get_repository_by_name(typo_readme_repository)
-
+        sleep(1)
         fork = repo.create_fork()
+        sleep(1)
 
         try:
             ref = fork.ref("heads/{}".format(repo.default_branch))
             fork.create_branch_ref(TYPO_BRANCH_NAME, ref.object.sha)
+            sleep(1)
 
             # commit modified readme
             fork.readme().update(
@@ -92,7 +95,7 @@ class GithubClient:
                 branch=TYPO_BRANCH_NAME,
                 content=modified_readme.encode("utf-8"),
             )
-
+            sleep(1)
             pull_request = repo.create_pull(
                 title=TYPO_PULL_REQUEST_TITLE,
                 base=repo.default_branch,

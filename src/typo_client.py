@@ -1,5 +1,6 @@
 import datetime
 import logging
+from time import sleep
 import re
 from collections import Counter
 
@@ -47,7 +48,7 @@ class TypoClient:
             repository: Repository = repo.repository
 
             if repository.stargazers_count < MIN_REPO_STARS:
-                logger.debug(f"Repo does not meet min stars requirement, skipping")
+                logger.debug("Repo does not meet min stars requirement, skipping")
                 break  # repos are sorted desc by stars so there is no point looking further
 
             if self.database.is_already_approved_repo(repository.full_name):
@@ -137,6 +138,7 @@ class TypoClient:
         modified_readme = re.sub(
             r"\b%s\b" % typo.maybe_typo, typo.suggested_word, readme
         )
+        sleep(1)
 
         return self.github.create_fix_typo_pull_request(
             typo.repository, modified_readme=modified_readme
