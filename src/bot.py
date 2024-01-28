@@ -1,8 +1,8 @@
-import logging
 import datetime
-import pytz
+import logging
 from time import sleep
 
+import pytz
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.error import BadRequest
 from telegram.ext import (
@@ -256,8 +256,7 @@ class Bot:
         self.updater.job_queue.run_daily(
             callback=self.send_daily_typo_fixes,
             time=datetime.time(
-                hour=20, minute=0, second=0,
-                tzinfo=pytz.timezone("Europe/Amsterdam")
+                hour=20, minute=0, second=0, tzinfo=pytz.timezone("Europe/Amsterdam")
             ),
         )
 

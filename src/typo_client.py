@@ -1,8 +1,8 @@
 import datetime
 import logging
-from time import sleep
 import re
 from collections import Counter
+from time import sleep
 
 from github3.exceptions import NotFoundError, UnavailableForLegalReasons
 from github3.pulls import PullRequest
