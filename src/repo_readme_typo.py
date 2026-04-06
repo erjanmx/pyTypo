@@ -22,8 +22,6 @@ STOP_CHARS = [
 
 
 class RepoReadmeTypo:
-    id: int = None
-
     def __init__(self, repository: str, word: str, suggested: str, readme: str = None):
         self.repository = repository
         self.readme = readme
@@ -36,6 +34,9 @@ class RepoReadmeTypo:
 
         :return: str
         """
+        if not self.readme:
+            return self.maybe_typo
+
         # get position of the word in text
         typo_at = self.readme.find(self.maybe_typo)
 
@@ -69,4 +70,7 @@ class RepoReadmeTypo:
 
         :return: int
         """
+        if not self.readme:
+            return 0
+
         return self.readme.count(self.maybe_typo)

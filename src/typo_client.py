@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 MIN_REPO_STARS = 30  # minimum amount of stargazers of the repo to be checked for typos
 DAYS_TO_LOOK_BACK = 7
 MIN_OCCURRENCE_COUNT_TO_IGNORE = 50
+MAX_CALLBACK_DATA_LENGTH = 54  # Telegram callback_data limit (pipe-separated: action|repo|word|suggestion)
 
 
 class TypoClient:
@@ -104,7 +105,7 @@ class TypoClient:
                     logger.debug("Typo context is not in English, skipping")
                     continue
 
-                if len(repository.full_name + maybe_typo + suggestion) > 54:  # fixme
+                if len(repository.full_name + maybe_typo + suggestion) > MAX_CALLBACK_DATA_LENGTH:
                     logger.debug(f'Repo name "{repository.full_name}" is too long')
                     break
 
@@ -144,6 +145,7 @@ class TypoClient:
 
     def reset_generator(self):
         self.repo_generator = None
+        self.counter = Counter()
 
     def reset_look_date(self):
         self.look_date = datetime.datetime.now() - datetime.timedelta(

@@ -9,8 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class TypoDetectorDict(TypoDetector):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.common_typos = self._load_typos()
+
     @staticmethod
-    def load_typos():
+    def _load_typos():
         typos = {}
         with open(os.path.join(PATH, "../data/common_typos.txt")) as word_file:
             for line in word_file:
@@ -21,13 +25,11 @@ class TypoDetectorDict(TypoDetector):
         return typos
 
     def get_possible_typos_with_suggestions(self, text: str) -> dict:
-        common_typos = self.load_typos()
-
         words = self.get_unique_words(text)
 
         possible_typos = {}
         for word in words:
-            if word in common_typos and word != common_typos[word]:
-                possible_typos[word] = common_typos[word]
+            if word in self.common_typos and word != self.common_typos[word]:
+                possible_typos[word] = self.common_typos[word]
 
         return possible_typos

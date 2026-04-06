@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 
 def main():
     # custom words data for autocorrect.Speller
-    with open("data/word_count.json") as file:
+    data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data/word_count.json")
+    with open(data_path) as file:
         speller = Speller(nlp_data=json.load(file))
 
     client = TypoClient(
