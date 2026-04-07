@@ -14,8 +14,8 @@ class TypoDetectorDict(TypoDetector):
         typos = {}
         with open(os.path.join(PATH, "../data/common_typos.txt")) as word_file:
             for line in word_file:
-                if len(line.strip().split(':')) == 2:
-                    typo, correct = line.strip().split(':')
+                if len(line.strip().split(":")) == 2:
+                    typo, correct = line.strip().split(":")
                     typos[typo.strip()] = correct.strip()
 
         return typos
