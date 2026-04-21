@@ -3,5 +3,5 @@ github3.py==3.2.0
 autocorrect==2.6.1
 langdetect==1.0.9
 python-telegram-bot==13.12
-python-dotenv==0.20.0
+python-dotenv==1.2.2
 inflect==5.6.0
